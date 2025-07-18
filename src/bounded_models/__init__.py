@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, Union, get_args, get_origin
+import types
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 
 import annotated_types
 from pydantic import BaseModel
@@ -11,105 +13,166 @@ if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
 
-class FieldChecker(Protocol):
-    """Protocol for field type checkers."""
+class TypeChecker(ABC):
+    """Abstract base class for type checkers with recursive support."""
 
-    def __call__(self, field_info: FieldInfo) -> bool:
-        """Check if a field of the given type is properly bounded."""
+    @abstractmethod
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        """Check if this checker can handle the given field."""
+        ...
+
+    @abstractmethod
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        """Check if the field is properly bounded, using registry for recursive checks."""
         ...
 
 
-# Type checker functions
-def check_numeric_bounds(field_info: FieldInfo) -> bool:
-    """Check if numeric types have proper bounds."""
-    if field_info.annotation not in (int, float):
-        return True  # Not applicable
+class NumericChecker(TypeChecker):
+    """Checker for numeric types (int, float)."""
 
-    has_lower = any(isinstance(m, (annotated_types.Ge, annotated_types.Gt)) for m in field_info.metadata)
-    has_upper = any(isinstance(m, (annotated_types.Le, annotated_types.Lt)) for m in field_info.metadata)
-    return has_lower and has_upper
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        return field_info.annotation in (int, float)
 
-
-def check_string_bounds(field_info: FieldInfo) -> bool:
-    """Check if string types have proper bounds."""
-    if field_info.annotation is not str:
-        return True  # Not applicable
-
-    return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        has_lower = any(isinstance(m, (annotated_types.Ge, annotated_types.Gt)) for m in field_info.metadata)
+        has_upper = any(isinstance(m, (annotated_types.Le, annotated_types.Lt)) for m in field_info.metadata)
+        return has_lower and has_upper
 
 
-def check_sequence_bounds(field_info: FieldInfo) -> bool:
-    """Check if sequence types have proper bounds."""
-    if field_info.annotation not in (list, tuple, set):
-        return True  # Not applicable
+class StringChecker(TypeChecker):
+    """Checker for string types."""
 
-    return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        return field_info.annotation is str
 
-
-# Registry of type checkers
-TYPE_CHECKERS: dict[str, FieldChecker] = {
-    "numeric": check_numeric_bounds,
-    "string": check_string_bounds,
-    "sequence": check_sequence_bounds,
-}
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
 
 
-# def extract_base_type(field_annotation: type[Any] | None) -> type[Any]:
-#     """Extract the base type from a potentially complex annotation.
+class SequenceChecker(TypeChecker):
+    """Checker for sequence types with recursive element checking."""
 
-#     Example:
-#         - For `Optional[int]`, it returns `int`.
-#         - For `list[str]`, it returns `str`.
-#         - For `Union[int, None]`, it returns `int`.
-#         - For `Union[str, None]`, it returns `str`.
-#         - For `int`, it returns `int`.
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        origin = get_origin(field_info.annotation)
+        return origin in (list, tuple, set)
 
-#     """
-#     field_type = field_annotation
-#     origin = get_origin(field_type)
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        # First check if the sequence itself is bounded
+        has_max_len = any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+        if not has_max_len:
+            return False
 
-#     if origin:
-#         field_type = origin
+        # Then recursively check element types
+        args = get_args(field_info.annotation)
+        if args:
+            element_type = args[0]
+            # Only check boundedness for complex types (BoundedModel subclasses)
+            # Primitive types in sequences don't need individual bounds
+            if isinstance(element_type, type) and issubclass(element_type, BaseModel):
+                from pydantic.fields import FieldInfo as PydanticFieldInfo
 
-#     # Handle Optional types
-#     if origin is Union:
-#         args = get_args(field_annotation)
-#         # Check if it's Optional (Union with None)
-#         non_none_types = [t for t in args if t is not type(None)]
-#         if len(non_none_types) == 1:
-#             field_type = non_none_types[0]
-#             origin = get_origin(field_type)
-#             if origin:
-#                 field_type = origin
+                element_field = PydanticFieldInfo(annotation=element_type, default=...)
+                if not registry.check_field(element_field):
+                    return False
 
-#     return field_type
+        return True
+
+
+class BoundedModelChecker(TypeChecker):
+    """Checker for nested BoundedModel types."""
+
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        field_type = field_info.annotation
+        # Handle both direct types and Optional types
+        origin = get_origin(field_type)
+        if origin is Union:
+            # Don't handle Union types here, let OptionalChecker do it
+            return False
+        return isinstance(field_type, type) and issubclass(field_type, BaseModel)
+
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        field_type = field_info.annotation
+        if isinstance(field_type, type) and issubclass(field_type, BoundedModel):
+            return field_type.is_bounded()
+        return True
+
+
+class OptionalChecker(TypeChecker):
+    """Checker for Optional/Union types."""
+
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        origin = get_origin(field_info.annotation)
+        # Handle both typing.Union and types.UnionType (Python 3.10+ | syntax)
+        return origin is Union or (hasattr(types, "UnionType") and origin is types.UnionType)
+
+    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+        args = get_args(field_info.annotation)
+        non_none_types = [t for t in args if t is not type(None)]
+
+        if len(non_none_types) == 1:
+            # This is Optional[T], check T
+            from pydantic.fields import FieldInfo as PydanticFieldInfo
+
+            inner_field = PydanticFieldInfo(
+                annotation=non_none_types[0],
+                default=...,
+                metadata=field_info.metadata,
+            )
+            return registry.check_field(inner_field)
+
+        # For other Union types, all must be bounded
+        for t in non_none_types:
+            from pydantic.fields import FieldInfo as PydanticFieldInfo
+
+            inner_field = PydanticFieldInfo(annotation=t, default=..., metadata=field_info.metadata)
+            if not registry.check_field(inner_field):
+                return False
+        return True
+
+
+class TypeCheckerRegistry:
+    """Registry for type checkers with priority ordering."""
+
+    def __init__(self) -> None:
+        self.checkers: list[TypeChecker] = []
+        self._initialize_default_checkers()
+
+    def _initialize_default_checkers(self) -> None:
+        """Initialize with default checkers in priority order."""
+        self.checkers = [
+            OptionalChecker(),  # Check Optional/Union first
+            BoundedModelChecker(),  # Check nested models
+            SequenceChecker(),  # Check sequences (can be recursive)
+            NumericChecker(),  # Check numbers
+            StringChecker(),  # Check strings
+        ]
+
+    def register(self, checker: TypeChecker, priority: int = -1) -> None:
+        """Register a new type checker at the given priority position."""
+        if priority < 0:
+            self.checkers.append(checker)
+        else:
+            self.checkers.insert(priority, checker)
+
+    def check_field(self, field_info: FieldInfo) -> bool:
+        """Check if a field is properly bounded using appropriate checker."""
+        # Find the first checker that can handle this type
+        for checker in self.checkers:
+            if checker.can_handle(field_info):
+                return checker.check(field_info, self)
+
+        # If no checker can handle it, assume it's bounded
+        # (e.g., custom types without specific requirements)
+        return True
+
+
+# Global registry instance
+_registry = TypeCheckerRegistry()
 
 
 def is_field_bounded(field_info: FieldInfo) -> bool:
-    """Check if a single field is properly bounded using registered checkers."""
-    # field_type = extract_base_type(field_info.annotation)
-    # metadata = field_info.metadata if hasattr(field_info, "metadata") else []
-
-    # # Check if it's a nested BoundedModel
-    # if isinstance(field_type, type) and issubclass(field_type, BoundedModel):
-    #     return is_model_bounded(field_type)
-
-    # # For generic types (list, tuple, set), also check inner types
-    # origin = get_origin(field_info.annotation)
-    # if origin in (list, tuple, set):
-    #     args = get_args(field_info.annotation)
-    #     if args:
-    #         # Check if the inner type is a BoundedModel
-    #         inner_type = args[0]
-    #         if (
-    #             isinstance(inner_type, type)
-    #             and issubclass(inner_type, BoundedModel)
-    #             and not is_model_bounded(inner_type)
-    #         ):
-    #             return False
-
-    # Run all registered type checkers
-    return all(checker(field_info) for checker in TYPE_CHECKERS.values())
+    """Check if a single field is properly bounded using the type checker registry."""
+    return _registry.check_field(field_info)
 
 
 def is_model_bounded(model_class: type[BaseModel]) -> bool:
@@ -117,12 +180,15 @@ def is_model_bounded(model_class: type[BaseModel]) -> bool:
     return all(is_field_bounded(field_info) for field_info in model_class.model_fields.values())
 
 
-def register_type_checker(name: str, checker: FieldChecker) -> None:
-    """Register a new type checker function."""
-    if name in TYPE_CHECKERS:
-        msg = f"Type checker '{name}' is already registered."
-        raise ValueError(msg)
-    TYPE_CHECKERS[name] = checker
+def register_type_checker(checker: TypeChecker, priority: int = -1) -> None:
+    """Register a new type checker.
+
+    Args:
+        checker: The TypeChecker instance to register
+        priority: Position in the checker list (0 = highest priority, -1 = append)
+
+    """
+    _registry.register(checker, priority)
 
 
 class BoundedModel(BaseModel):
