@@ -3,7 +3,9 @@ from typing import Annotated, Any
 import annotated_types
 from pydantic import Field
 
-from bounded_models import BoundedModel, BoundednessChecker, TypeCheckerRegistry, register_type_checker
+from bounded_models import BoundedModel
+from bounded_models._checkers import BoundednessChecker
+from bounded_models._registry import TypeCheckerRegistry, register_type_checker
 
 
 def test_no_fields() -> None:
