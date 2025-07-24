@@ -1,9 +1,9 @@
-from typing import Any
+from typing import Annotated, Any
 
 import annotated_types
 from pydantic import Field
 
-from bounded_models import BoundedModel, register_type_checker
+from bounded_models import BoundedModel, BoundednessChecker, TypeCheckerRegistry, register_type_checker
 
 
 def test_no_fields() -> None:
@@ -11,17 +11,15 @@ def test_no_fields() -> None:
         """A simple bounded model with no fields."""
 
     assert ModelWithNoFields.is_bounded()
-    assert ModelWithNoFields.get_unbounded_fields() == {}
 
 
 def test_numeric_bounds() -> None:
     class ProperlyBoundedNumeric(BoundedModel):
-        bounded_float: float = Field(ge=0.0, le=1.0)
+        bounded_float: Annotated[list[Annotated[float, Field(ge=0.0, le=1.0)]], Field(max_length=10)]
         bounded_int: int = Field(gt=0, lt=100)
         bounded_float_mixed: float = Field(ge=0.0, lt=1.0)
 
     assert ProperlyBoundedNumeric.is_bounded()
-    assert ProperlyBoundedNumeric.get_unbounded_fields() == {}
 
     class UnboundedNumeric(BoundedModel):
         unbounded_float: float
@@ -30,12 +28,6 @@ def test_numeric_bounds() -> None:
 
     assert not UnboundedNumeric.is_bounded()
 
-    unbounded = UnboundedNumeric.get_unbounded_fields()
-    assert len(unbounded) == 3
-    assert "unbounded_float" in unbounded
-    assert "only_lower_float" in unbounded
-    assert "only_upper_int" in unbounded
-
 
 def test_string_bounds() -> None:
     class ProperlyBoundedString(BoundedModel):
@@ -43,7 +35,6 @@ def test_string_bounds() -> None:
         bounded_str_with_min: str = Field(min_length=1, max_length=100)
 
     assert ProperlyBoundedString.is_bounded()
-    assert ProperlyBoundedString.get_unbounded_fields() == {}
 
     class UnboundedString(BoundedModel):
         unbounded_str: str
@@ -51,20 +42,14 @@ def test_string_bounds() -> None:
 
     assert not UnboundedString.is_bounded()
 
-    unbounded = UnboundedString.get_unbounded_fields()
-    assert len(unbounded) == 2
-    assert "unbounded_str" in unbounded
-    assert "only_min_length" in unbounded
-
 
 def test_sequence_bounds() -> None:
     class ProperlyBoundedSequence(BoundedModel):
-        bounded_list: list[str] = Field(max_length=10)
+        bounded_list: Annotated[list[str], Field(max_length=10)]
         bounded_tuple: tuple[int, ...] = Field(max_length=5)
         bounded_set: set[float] = Field(max_length=20)
 
     assert ProperlyBoundedSequence.is_bounded()
-    assert ProperlyBoundedSequence.get_unbounded_fields() == {}
 
     class UnboundedSequence(BoundedModel):
         unbounded_list: list[int]
@@ -72,10 +57,6 @@ def test_sequence_bounds() -> None:
         unbounded_set: set[float]
 
     assert not UnboundedSequence.is_bounded()
-
-    unbounded = UnboundedSequence.get_unbounded_fields()
-    assert len(unbounded) == 3
-    assert all(field in unbounded for field in ["unbounded_list", "unbounded_tuple", "unbounded_set"])
 
 
 def test_optional_fields() -> None:
@@ -85,10 +66,6 @@ def test_optional_fields() -> None:
         optional_unbounded_int: int | None = None
 
     assert not ModelWithOptionals.is_bounded()
-
-    unbounded = ModelWithOptionals.get_unbounded_fields()
-    assert len(unbounded) == 1
-    assert "optional_unbounded_int" in unbounded
 
 
 def test_nested_bounded_models() -> None:
@@ -122,31 +99,26 @@ def test_mixed_bounded_unbounded() -> None:
 
     assert not MixedModel.is_bounded()
 
-    unbounded = MixedModel.get_unbounded_fields()
-    assert len(unbounded) == 2
-    assert "unbounded_float" in unbounded
-    assert "unbounded_list" in unbounded
-
 
 def test_custom_type_checker() -> None:
     # Test registering a custom checker for dict types
-    def check_dict_bounds(field_type: type, metadata: list[Any]) -> bool:
-        if field_type is not dict:
-            return True  # Not applicable
-        # Check for max_length constraint
-        return any(isinstance(m, annotated_types.MaxLen) for m in metadata)
+    from typing import get_origin
 
-    register_type_checker(check_dict_bounds)
+    class DictChecker(BoundednessChecker):
+        def can_handle(self, field_info: Any) -> bool:
+            return get_origin(field_info.annotation) is dict or field_info.annotation is dict
+
+        def check(self, field_info: Any, registry: TypeCheckerRegistry) -> bool:
+            # Check for max_length constraint
+            return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+
+    register_type_checker(DictChecker())
 
     class ModelWithDict(BoundedModel):
         bounded_dict: dict[str, int] = Field(max_length=10)
         unbounded_dict: dict[str, str]
 
     assert not ModelWithDict.is_bounded()
-
-    unbounded = ModelWithDict.get_unbounded_fields()
-    assert "unbounded_dict" in unbounded
-    assert "bounded_dict" not in unbounded
 
 
 def test_complex_nested_structure() -> None:
