@@ -1,12 +1,9 @@
-from typing import Annotated, Any, get_origin
+from typing import Annotated
 
-import annotated_types
 import pytest
 from pydantic import BaseModel, Field
 
 from bounded_models import is_model_bounded
-from bounded_models._handlers import FieldHandler
-from bounded_models._registry import FieldHandlerRegistry
 
 
 def test_no_fields() -> None:
