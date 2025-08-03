@@ -5,7 +5,7 @@ from __future__ import annotations
 import heapq
 from typing import TYPE_CHECKING
 
-from bounded_models._checkers import (
+from ._checkers import (
     BoundedModelChecker,
     BoundednessChecker,
     NumericChecker,
