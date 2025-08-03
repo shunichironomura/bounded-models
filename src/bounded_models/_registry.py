@@ -61,16 +61,21 @@ class BoundednessCheckerRegistry:
             _, _, checker = heapq.heappop(heap_copy)
             yield checker
 
-    def check_field(self, field_info: FieldInfo, *, fail_on_no_checker: bool = False) -> bool:
+    def check_field(self, field_info: FieldInfo, *, fail_on_no_checker: bool = True) -> bool:
         """Check if a field is properly bounded using appropriate checker."""
         # Find the first checker that can handle this type
+        found_handler = False
         for checker in self.iter_checkers():
             if checker.can_handle(field_info):
-                return checker.check(field_info, self)
+                found_handler = True
+                result = checker.check(field_info, self)
+                if not result:
+                    # If any checker returns False, exit early
+                    return False
 
-        return not fail_on_no_checker
+        return found_handler or not fail_on_no_checker
 
-    def check_model(self, model: type[BaseModel], *, fail_on_no_checker: bool = False) -> bool:
+    def check_model(self, model: type[BaseModel], *, fail_on_no_checker: bool = True) -> bool:
         """Check if all fields in a model are properly bounded."""
         return all(
             self.check_field(field_info, fail_on_no_checker=fail_on_no_checker)
@@ -83,11 +88,9 @@ class BoundednessCheckerRegistry:
         # TODO: Reconsider the selection of default checkers
         return cls(
             checkers=[
-                OptionalChecker(),
-                BoundedModelChecker(),
-                SequenceChecker(),
                 NumericChecker(),
                 StringChecker(),
+                BoundedModelChecker(),
             ],
         )
 
