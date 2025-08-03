@@ -3,27 +3,27 @@
 from __future__ import annotations
 
 __all__ = [
-    "BaseModelChecker",
+    "BaseModelFieldHandler",
     "BoundedModel",
-    "BoundednessChecker",
-    "BoundednessCheckerRegistry",
-    "LiteralChecker",
-    "NumericChecker",
-    "OptionalChecker",
-    "SequenceChecker",
-    "StringChecker",
+    "FieldHandler",
+    "FieldHandlerRegistry",
+    "LiteralFieldHandler",
+    "NumericFieldHandler",
+    "OptionalFieldHandler",
+    "SequenceFieldHandler",
+    "StringFieldHandler",
     "is_field_bounded",
     "is_model_bounded",
 ]
 
-from ._checkers import (
-    BaseModelChecker,
-    BoundednessChecker,
-    LiteralChecker,
-    NumericChecker,
-    OptionalChecker,
-    SequenceChecker,
-    StringChecker,
+from ._handlers import (
+    BaseModelFieldHandler,
+    FieldHandler,
+    LiteralFieldHandler,
+    NumericFieldHandler,
+    OptionalFieldHandler,
+    SequenceFieldHandler,
+    StringFieldHandler,
 )
-from ._core import BoundedModel
-from ._registry import BoundednessCheckerRegistry, is_field_bounded, is_model_bounded
+from ._model import BoundedModel
+from ._registry import FieldHandlerRegistry, is_field_bounded, is_model_bounded

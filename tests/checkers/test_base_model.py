@@ -4,25 +4,33 @@ import pytest
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from bounded_models import BaseModelChecker, BoundednessCheckerRegistry, LiteralChecker, NumericChecker
+from bounded_models import BaseModelFieldHandler, FieldHandlerRegistry, LiteralFieldHandler, NumericFieldHandler
 
 
 @pytest.fixture
-def checker() -> BaseModelChecker:
-    """Create a BaseModel checker instance."""
-    return BaseModelChecker()
+def handler() -> BaseModelFieldHandler:
+    """Create a BaseModel handler instance."""
+    return BaseModelFieldHandler()
 
 
 @pytest.fixture
-def registry(checker: BaseModelChecker) -> BoundednessCheckerRegistry:
-    """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker, LiteralChecker(), NumericChecker()])
+def registry(handler: BaseModelFieldHandler) -> FieldHandlerRegistry:
+    """Create a type handler registry instance."""
+    return FieldHandlerRegistry(handlers=[handler, LiteralFieldHandler(), NumericFieldHandler()])
 
 
 class BoundedChildModel(BaseModel):
     """A simple bounded child model for testing."""
 
     value: Literal[1, 2, 3]
+
+
+class BoundedChildModelWithManyFields(BaseModel):
+    """A bounded child model with many fields for testing."""
+
+    value1: Literal[1, 2, 3]
+    value2: Literal["a", "b", "c"]
+    value3: Literal[True, False]
 
 
 class UnboundedChildModel(BaseModel):
@@ -32,11 +40,12 @@ class UnboundedChildModel(BaseModel):
 
 
 _BOUNDED_FIELDS = [
-    FieldInfo(annotation=BoundedChildModel),
+    (FieldInfo(annotation=BoundedChildModel), 1),
+    (FieldInfo(annotation=BoundedChildModelWithManyFields), 3),
 ]
 
 _UNBOUNDED_FIELDS = [
-    FieldInfo(annotation=UnboundedChildModel),
+    (FieldInfo(annotation=UnboundedChildModel), 1),
 ]
 
 _INVALID_FIELDS = [
@@ -45,20 +54,22 @@ _INVALID_FIELDS = [
 
 
 @pytest.mark.parametrize(
-    ("field_info", "can_handle", "bounded"),
-    [(field_info, True, True) for field_info in _BOUNDED_FIELDS]
-    + [(field_info, True, False) for field_info in _UNBOUNDED_FIELDS]
-    + [(field_info, False, None) for field_info in _INVALID_FIELDS],
+    ("field_info", "can_handle", "bounded", "n_dimensions"),
+    [(field_info, True, True, dim) for (field_info, dim) in _BOUNDED_FIELDS]
+    + [(field_info, True, False, dim) for (field_info, dim) in _UNBOUNDED_FIELDS]
+    + [(field_info, False, None, None) for field_info in _INVALID_FIELDS],
 )
-def test_base_model_checker(
-    checker: BaseModelChecker,
-    registry: BoundednessCheckerRegistry,
+def test_base_model_handler(
+    handler: BaseModelFieldHandler,
+    registry: FieldHandlerRegistry,
     *,
     field_info: FieldInfo,
     can_handle: bool,
     bounded: bool | None,
+    n_dimensions: int | None,
 ) -> None:
-    """Test numeric checker for boundedness."""
-    assert checker.can_handle(field_info) == can_handle
+    """Test numeric handler for boundedness."""
+    assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert checker.check(field_info, registry) == bounded
+        assert handler.check_boundedness(field_info, registry) == bounded
+        assert handler.n_dimensions(field_info, registry) == n_dimensions

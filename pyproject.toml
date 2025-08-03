@@ -9,7 +9,10 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
-dependencies = ["pydantic>=2.11.7"]
+dependencies = [
+    "more-itertools>=10.7.0",
+    "pydantic>=2.11.7",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
@@ -79,9 +82,9 @@ ignore = [
     #     "RET505",  # Unnecessary `else` after `return` statement
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
     #     "D401",    # First line should be in imperative mood
-    "TD002", # Missing author in TODO
-    "TD003", # add link on issue into TODO
-    #     "PLR0913", # Too many arguments to function call
+    "TD002",   # Missing author in TODO
+    "TD003",   # add link on issue into TODO
+    "PLR0913", # Too many arguments to function call
     #     "D407",    # Missing dashed underline after section
     #     "ERA001",  # Commented out code
     "FIX002", # Fixme comment

@@ -3,19 +3,19 @@ from typing import Literal
 import pytest
 from pydantic.fields import FieldInfo
 
-from bounded_models import BoundednessCheckerRegistry, LiteralChecker
+from bounded_models import FieldHandlerRegistry, LiteralFieldHandler
 
 
 @pytest.fixture
-def checker() -> LiteralChecker:
-    """Create a string checker instance."""
-    return LiteralChecker()
+def handler() -> LiteralFieldHandler:
+    """Create a string handler instance."""
+    return LiteralFieldHandler()
 
 
 @pytest.fixture
-def registry(checker: LiteralChecker) -> BoundednessCheckerRegistry:
-    """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker])
+def registry(handler: LiteralFieldHandler) -> FieldHandlerRegistry:
+    """Create a type handler registry instance."""
+    return FieldHandlerRegistry(handlers=[handler])
 
 
 _BOUNDED_FIELDS = [
@@ -36,15 +36,16 @@ _INVALID_FIELDS = [
     + [(field_info, True, False) for field_info in _UNBOUNDED_FIELDS]
     + [(field_info, False, None) for field_info in _INVALID_FIELDS],
 )
-def test_literal_checker(
-    checker: LiteralChecker,
-    registry: BoundednessCheckerRegistry,
+def test_literal_handler(
+    handler: LiteralFieldHandler,
+    registry: FieldHandlerRegistry,
     *,
     field_info: FieldInfo,
     can_handle: bool,
     bounded: bool | None,
 ) -> None:
-    """Test numeric checker for boundedness."""
-    assert checker.can_handle(field_info) == can_handle
+    """Test numeric handler for boundedness."""
+    assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert checker.check(field_info, registry) == bounded
+        assert handler.check_boundedness(field_info, registry) == bounded
+        assert handler.n_dimensions(field_info, registry) == 1

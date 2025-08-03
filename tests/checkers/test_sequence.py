@@ -4,19 +4,19 @@ from typing import Annotated
 import pytest
 from pydantic.fields import FieldInfo
 
-from bounded_models import BoundednessCheckerRegistry, NumericChecker, SequenceChecker, StringChecker
+from bounded_models import FieldHandlerRegistry, NumericFieldHandler, SequenceFieldHandler, StringFieldHandler
 
 
 @pytest.fixture
-def checker() -> SequenceChecker:
-    """Create a sequence checker instance."""
-    return SequenceChecker()
+def handler() -> SequenceFieldHandler:
+    """Create a sequence handler instance."""
+    return SequenceFieldHandler()
 
 
 @pytest.fixture
-def registry(checker: SequenceChecker) -> BoundednessCheckerRegistry:
-    """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker, NumericChecker(), StringChecker()])
+def registry(handler: SequenceFieldHandler) -> FieldHandlerRegistry:
+    """Create a type handler registry instance."""
+    return FieldHandlerRegistry(handlers=[handler, NumericFieldHandler(), StringFieldHandler()])
 
 
 _BOUNDED_FIELDS = [
@@ -55,15 +55,15 @@ _INVALID_FIELDS = [
     + [(field_info, True, False) for field_info in _UNBOUNDED_FIELDS]
     + [(field_info, False, None) for field_info in _INVALID_FIELDS],
 )
-def test_sequence_checker(
-    checker: SequenceChecker,
-    registry: BoundednessCheckerRegistry,
+def test_sequence_handler(
+    handler: SequenceFieldHandler,
+    registry: FieldHandlerRegistry,
     *,
     field_info: FieldInfo,
     can_handle: bool,
     bounded: bool | None,
 ) -> None:
-    """Test sequence checker for boundedness."""
-    assert checker.can_handle(field_info) == can_handle
+    """Test sequence handler for boundedness."""
+    assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert checker.check(field_info, registry) == bounded
+        assert handler.check_boundedness(field_info, registry) == bounded
