@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 from pydantic.fields import FieldInfo
 
-from bounded_models import BoundednessCheckerRegistry, NumericChecker, SequenceChecker
+from bounded_models import BoundednessCheckerRegistry, NumericChecker, SequenceChecker, StringChecker
 
 
 @pytest.fixture
@@ -16,16 +16,31 @@ def checker() -> SequenceChecker:
 @pytest.fixture
 def registry(checker: SequenceChecker) -> BoundednessCheckerRegistry:
     """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker, NumericChecker()])
+    return BoundednessCheckerRegistry(checkers=[checker, NumericChecker(), StringChecker()])
 
 
 _BOUNDED_FIELDS = [
     FieldInfo(annotation=list[Annotated[str, FieldInfo(annotation=NoneType, max_length=10)]], max_length=5),
+    FieldInfo(
+        annotation=tuple[
+            Annotated[int, FieldInfo(annotation=NoneType, ge=0, le=100)],
+            Annotated[int, FieldInfo(annotation=NoneType, ge=0, le=100)],
+        ],
+    ),
+    FieldInfo(
+        annotation=tuple[Annotated[int, FieldInfo(annotation=NoneType, ge=0, le=100)], ...],
+        max_length=3,
+    ),
 ]
 
 _UNBOUNDED_FIELDS = [
     FieldInfo(annotation=list),
     FieldInfo(annotation=list[int]),
+    FieldInfo(annotation=list[Annotated[int, FieldInfo(annotation=NoneType, ge=0)]], max_length=10),
+    FieldInfo(annotation=list[Annotated[int, FieldInfo(annotation=NoneType, ge=0, le=100)]]),
+    FieldInfo(
+        annotation=tuple[Annotated[int, FieldInfo(annotation=NoneType, ge=0, le=100)], ...],
+    ),
 ]
 
 _INVALID_FIELDS = [
