@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import types
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Union, get_args, get_origin
@@ -60,12 +61,12 @@ class StringChecker(BoundednessChecker):
 class SequenceChecker(BoundednessChecker):
     """Checker for sequence types with recursive element checking."""
 
-    sequence_types: ClassVar[set[type]] = {list, tuple, set}
+    SEQUENCE_TYPES: ClassVar[set[type]] = {list, tuple, set}
 
     def can_handle(self, field_info: FieldInfo) -> bool:
         """Check if the field is a sequence type (list, tuple, set)."""
-        origin = get_origin(field_info.annotation)
-        return origin in self.sequence_types
+        origin = field_info.annotation if inspect.isclass(field_info.annotation) else get_origin(field_info.annotation)
+        return origin in self.SEQUENCE_TYPES
 
     def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if sequence field has max_length constraint and recursively checks elements."""
