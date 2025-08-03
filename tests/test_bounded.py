@@ -5,8 +5,8 @@ import pytest
 from pydantic import BaseModel, Field
 
 from bounded_models import is_model_bounded
-from bounded_models._checkers import BoundednessChecker
-from bounded_models._registry import BoundednessCheckerRegistry
+from bounded_models._handlers import FieldHandler
+from bounded_models._registry import FieldHandlerRegistry
 
 
 def test_no_fields() -> None:
@@ -135,20 +135,20 @@ def test_mixed_bounded_unbounded() -> None:
     assert not is_model_bounded(MixedModel)
 
 
-def test_custom_type_checker() -> None:
-    # Test registering a custom checker for dict types
+def test_custom_type_handler() -> None:
+    # Test registering a custom handler for dict types
 
-    registry = BoundednessCheckerRegistry.default()
+    registry = FieldHandlerRegistry.default()
 
-    class DictChecker(BoundednessChecker):
+    class DictHandler(FieldHandler):
         def can_handle(self, field_info: Any) -> bool:
             return get_origin(field_info.annotation) is dict or field_info.annotation is dict
 
-        def check(self, field_info: Any, registry: BoundednessCheckerRegistry) -> bool:  # noqa: ARG002
+        def check(self, field_info: Any, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
             # Check for max_length constraint
             return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
 
-    registry.register(DictChecker())
+    registry.register(DictHandler())
 
     class ModelWithDict(BaseModel):
         bounded_dict: dict[str, int] = Field(max_length=10)

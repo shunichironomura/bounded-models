@@ -4,19 +4,19 @@ import pytest
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from bounded_models import BaseModelChecker, BoundednessCheckerRegistry, LiteralChecker, NumericChecker
+from bounded_models import BaseModelFieldHandler, FieldHandlerRegistry, LiteralFieldHandler, NumericFieldHandler
 
 
 @pytest.fixture
-def checker() -> BaseModelChecker:
-    """Create a BaseModel checker instance."""
-    return BaseModelChecker()
+def handler() -> BaseModelFieldHandler:
+    """Create a BaseModel handler instance."""
+    return BaseModelFieldHandler()
 
 
 @pytest.fixture
-def registry(checker: BaseModelChecker) -> BoundednessCheckerRegistry:
-    """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker, LiteralChecker(), NumericChecker()])
+def registry(handler: BaseModelFieldHandler) -> FieldHandlerRegistry:
+    """Create a type handler registry instance."""
+    return FieldHandlerRegistry(handlers=[handler, LiteralFieldHandler(), NumericFieldHandler()])
 
 
 class BoundedChildModel(BaseModel):
@@ -50,15 +50,15 @@ _INVALID_FIELDS = [
     + [(field_info, True, False) for field_info in _UNBOUNDED_FIELDS]
     + [(field_info, False, None) for field_info in _INVALID_FIELDS],
 )
-def test_base_model_checker(
-    checker: BaseModelChecker,
-    registry: BoundednessCheckerRegistry,
+def test_base_model_handler(
+    handler: BaseModelFieldHandler,
+    registry: FieldHandlerRegistry,
     *,
     field_info: FieldInfo,
     can_handle: bool,
     bounded: bool | None,
 ) -> None:
-    """Test numeric checker for boundedness."""
-    assert checker.can_handle(field_info) == can_handle
+    """Test numeric handler for boundedness."""
+    assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert checker.check(field_info, registry) == bounded
+        assert handler.check(field_info, registry) == bounded

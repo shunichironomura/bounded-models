@@ -1,19 +1,19 @@
 import pytest
 from pydantic.fields import FieldInfo
 
-from bounded_models import BoundednessCheckerRegistry, StringChecker
+from bounded_models import FieldHandlerRegistry, StringFieldHandler
 
 
 @pytest.fixture
-def checker() -> StringChecker:
-    """Create a string checker instance."""
-    return StringChecker()
+def handler() -> StringFieldHandler:
+    """Create a string handler instance."""
+    return StringFieldHandler()
 
 
 @pytest.fixture
-def registry(checker: StringChecker) -> BoundednessCheckerRegistry:
-    """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker])
+def registry(handler: StringFieldHandler) -> FieldHandlerRegistry:
+    """Create a type handler registry instance."""
+    return FieldHandlerRegistry(handlers=[handler])
 
 
 _BOUNDED_FIELDS = [
@@ -37,15 +37,15 @@ _INVALID_FIELDS = [
     + [(field_info, True, False) for field_info in _UNBOUNDED_FIELDS]
     + [(field_info, False, None) for field_info in _INVALID_FIELDS],
 )
-def test_string_checker(
-    checker: StringChecker,
-    registry: BoundednessCheckerRegistry,
+def test_string_handler(
+    handler: StringFieldHandler,
+    registry: FieldHandlerRegistry,
     *,
     field_info: FieldInfo,
     can_handle: bool,
     bounded: bool | None,
 ) -> None:
-    """Test string checker for boundedness."""
-    assert checker.can_handle(field_info) == can_handle
+    """Test string handler for boundedness."""
+    assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert checker.check(field_info, registry) == bounded
+        assert handler.check(field_info, registry) == bounded
