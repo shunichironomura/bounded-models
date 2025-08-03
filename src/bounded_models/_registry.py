@@ -93,14 +93,14 @@ class BoundednessCheckerRegistry:
 
 
 # Global registry instance
-_registry = BoundednessCheckerRegistry.default()
+default_registry = BoundednessCheckerRegistry.default()
 
 
 def is_field_bounded(field_info: FieldInfo) -> bool:
     """Check if a single field is properly bounded using the type checker registry."""
-    return _registry.check_field(field_info)
+    return default_registry.check_field(field_info)
 
 
 def is_model_bounded(model_class: type[BaseModel]) -> bool:
     """Check if all fields in a model are properly bounded."""
-    return _registry.check_model(model_class)
+    return default_registry.check_model(model_class)
