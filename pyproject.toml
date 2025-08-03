@@ -7,7 +7,7 @@ authors = [
     { name = "Shunichiro Nomura", email = "nomura@space.t.u-tokyo.ac.jp" },
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = ["pydantic>=2.11.7"]
 
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9"]
@@ -45,9 +45,9 @@ select = ["ALL"]
 
 # Modify the following rules according to your preferences
 ignore = [
-    #     "PLR2004", # magic numbers
-    "S101", # use of assert
-    "G",    # logging format
+    "PLR2004", # magic numbers
+    "S101",    # use of assert
+    "G",       # logging format
     #     "ANN101",  # missing type annotation for self in method
     #     "ANN102",  # missing type annotation for cls in classmethod
     #     "D100",    # missing docstring in public module
@@ -81,8 +81,9 @@ unfixable = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**.py" = [
-    "D",      # Docstring
-    "INP001", # implicit-namespace-package
-    "ANN201", # missing-return-type-undocumented-public-function
-    "S101",   # use of assert
+    "D",       # Docstring
+    "PLR2004", # magic numbers
+    "INP001",  # implicit-namespace-package
+    "ANN201",  # missing-return-type-undocumented-public-function
+    "S101",    # use of assert
 ]
