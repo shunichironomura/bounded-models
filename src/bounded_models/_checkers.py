@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import types
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import TYPE_CHECKING, ClassVar, Union, get_args, get_origin
 
 import annotated_types
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from ._core import BoundedModel
-
 if TYPE_CHECKING:
-    from ._registry import TypeCheckerRegistry
+    from ._registry import BoundednessCheckerRegistry
 
 
 class BoundednessChecker(ABC):
@@ -25,7 +23,7 @@ class BoundednessChecker(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if the field is properly bounded, using registry for recursive checks."""
         raise NotImplementedError
 
@@ -37,7 +35,7 @@ class NumericChecker(BoundednessChecker):
         """Check if the field is a numeric type."""
         return field_info.annotation in (int, float)
 
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:  # noqa: ARG002
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:  # noqa: ARG002
         """Check if numeric field has both lower and upper bounds."""
         has_lower = any(isinstance(m, (annotated_types.Ge, annotated_types.Gt)) for m in field_info.metadata)
         has_upper = any(isinstance(m, (annotated_types.Le, annotated_types.Lt)) for m in field_info.metadata)
@@ -54,7 +52,7 @@ class StringChecker(BoundednessChecker):
         """Check if the field is a string type."""
         return field_info.annotation is str
 
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:  # noqa: ARG002
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:  # noqa: ARG002
         """Check if string field has max_length constraint."""
         return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
 
@@ -62,12 +60,14 @@ class StringChecker(BoundednessChecker):
 class SequenceChecker(BoundednessChecker):
     """Checker for sequence types with recursive element checking."""
 
+    sequence_types: ClassVar[set[type]] = {list, tuple, set}
+
     def can_handle(self, field_info: FieldInfo) -> bool:
         """Check if the field is a sequence type (list, tuple, set)."""
         origin = get_origin(field_info.annotation)
-        return origin in (list, tuple, set)
+        return origin in self.sequence_types
 
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if sequence field has max_length constraint and recursively checks elements."""
         # First check if the sequence itself is bounded
         has_max_len = any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
@@ -101,11 +101,11 @@ class BoundedModelChecker(BoundednessChecker):
             return False
         return isinstance(field_type, type) and issubclass(field_type, BaseModel)
 
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:  # noqa: ARG002
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if the BoundedModel field is properly bounded."""
         field_type = field_info.annotation
-        if isinstance(field_type, type) and issubclass(field_type, BoundedModel):
-            return field_type.is_bounded()
+        if isinstance(field_type, type) and issubclass(field_type, BaseModel):
+            return registry.check_model(field_type)
         return True
 
 
@@ -118,7 +118,7 @@ class OptionalChecker(BoundednessChecker):
         # Handle both typing.Union and types.UnionType (Python 3.10+ | syntax)
         return origin is Union or (hasattr(types, "UnionType") and origin is types.UnionType)
 
-    def check(self, field_info: FieldInfo, registry: TypeCheckerRegistry) -> bool:
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if Optional/Union field is properly bounded."""
         args = get_args(field_info.annotation)
         non_none_types = [t for t in args if t is not type(None)]
