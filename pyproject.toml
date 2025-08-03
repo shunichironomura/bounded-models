@@ -1,13 +1,28 @@
 [project]
 name = "bounded-models"
-version = "0"
-description = "Add your description here"
+version = "0.0.1"
+description = "A framework to check if Pydantic models are bounded"
 readme = "README.md"
 authors = [
     { name = "Shunichiro Nomura", email = "nomura@space.t.u-tokyo.ac.jp" },
 ]
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = ["pydantic>=2.11.7"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Typing :: Typed",
+]
+
+[project.urls]
+# Documentation = "https://shunichironomura.github.io/bounded-models/"
+Repository = "https://github.com/shunichironomura/bounded-models"
+Issues = "https://github.com/shunichironomura/bounded-models/issues"
 
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9"]
