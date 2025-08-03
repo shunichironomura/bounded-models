@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import heapq
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from more_itertools import take
 
 from ._handlers import (
     BaseModelFieldHandler,
@@ -91,6 +93,35 @@ class FieldHandlerRegistry:
     def model_dimensions(self, model: type[BaseModel]) -> int:
         """Return the number of dimensions for a model."""
         return sum(self.field_dimensions(field_info) for field_info in model.model_fields.values())
+
+    def sample_field(
+        self,
+        unit_values: Iterable[float],
+        field_info: FieldInfo,
+    ) -> Any:
+        """Sample a value from a field based on the provided unit values."""
+        for handler in self.iter_handlers():
+            if handler.can_handle(field_info):
+                return handler.sample(unit_values, field_info, self)
+        msg = f"No handler found for field with annotation {field_info.annotation}"
+        raise ValueError(msg)
+
+    def sample_model(
+        self,
+        unit_values: Iterable[float],
+        model: type[BaseModel],
+    ) -> BaseModel:
+        """Sample a model instance based on the provided unit values."""
+        unit_values_iter = iter(unit_values)
+        field_values: dict[str, Any] = {}
+        for field_name, field_info in model.model_fields.items():
+            # Take the next unit values for the field
+            unit_values = take(self.field_dimensions(field_info), unit_values_iter)
+            # Sample the field value
+            field_values[field_name] = self.sample_field(unit_values, field_info)
+        return model(
+            **field_values,
+        )
 
     @classmethod
     def default(cls) -> FieldHandlerRegistry:

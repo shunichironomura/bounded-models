@@ -13,3 +13,26 @@ It also provides a convenient class `BoundedModel`, a subclass of `Pydantic.Base
 - **Numeric Types**: `int`, `float` with both upper and lower bounds
 - **Literal Types**: `Literal` values
 - **BaseModel Types**: Nested `BoundedModel` instances
+
+## Usage
+
+```python
+from typing import Annotated, Literal
+
+from bounded_models import FieldHandlerRegistry
+from pydantic import BaseModel, Field
+
+class C(BaseModel):
+    s: Literal["a", "b", "c"]
+    n: Annotated[int, Field(ge=0, le=2)]
+    x: Annotated[float, Field(ge=0.2, le=0.8)]
+
+reg = FieldHandlerRegistry.default()
+
+reg.check_model_boundedness(C) # True
+
+reg.model_dimensions(C) # 3
+
+# Sample a model instance from a vector in [0, 1]^dim
+reg.sample_model([0.2, 0.3, 0.5], C) # C(s='a', n=0, x=0.5)
+```

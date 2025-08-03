@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import inspect
+import math
 import types
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Literal, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Union, get_args, get_origin
 
 import annotated_types
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from ._registry import FieldHandlerRegistry
 
 
-class FieldHandler(ABC):
-    """Abstract base class for type handlers with recursive support."""
+class FieldHandler[T = Any](ABC):
+    """Abstract base class for field handlers with recursive support."""
 
     @abstractmethod
     def can_handle(self, field_info: FieldInfo) -> bool:
@@ -33,8 +36,13 @@ class FieldHandler(ABC):
         """Return the number of dimensions for the field."""
         raise NotImplementedError
 
+    @abstractmethod
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> T:
+        """Sample a value from the field based on the provided unit values."""
+        raise NotImplementedError
 
-class NumericFieldHandler(FieldHandler):
+
+class NumericFieldHandler(FieldHandler[int | float]):
     """Checker for numeric types (int, float)."""
 
     def can_handle(self, field_info: FieldInfo) -> bool:
@@ -51,8 +59,31 @@ class NumericFieldHandler(FieldHandler):
         """Return the number of dimensions for numeric fields."""
         return 1
 
+    def sample(
+        self,
+        unit_values: Iterable[float],
+        field_info: FieldInfo,
+        registry: FieldHandlerRegistry,  # noqa: ARG002
+    ) -> int | float:
+        """Sample a numeric value based on the provided unit values."""
+        lower_bound = next(m.ge for m in field_info.metadata if isinstance(m, annotated_types.Ge))
+        assert isinstance(lower_bound, (int, float)), "Lower bound must be numeric."
+        upper_bound = next(m.le for m in field_info.metadata if isinstance(m, annotated_types.Le))
+        assert isinstance(upper_bound, (int, float)), "Upper bound must be numeric."
 
-class StringFieldHandler(FieldHandler):
+        (unit_value,) = unit_values  # unit_values should be a single float in [0, 1]
+        assert 0.0 <= unit_value <= 1.0, "Unit value must be in [0, 1]."
+        if field_info.annotation is int:
+            lower_bound = math.ceil(lower_bound)
+            upper_bound = math.floor(upper_bound)
+            n_options = upper_bound - lower_bound + 1
+            # Ensure we don't go out of bounds even if unit_value is 1.0
+            selected_index = min(int(unit_value * n_options), n_options - 1)
+            return lower_bound + selected_index
+        return lower_bound + (upper_bound - lower_bound) * unit_value
+
+
+class StringFieldHandler(FieldHandler[str]):
     """Checker for string types.
 
     It checks for max_length constraint.
@@ -70,8 +101,11 @@ class StringFieldHandler(FieldHandler):
         """Return the number of dimensions for string fields."""
         return 1
 
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> str:
+        raise NotImplementedError
 
-class LiteralFieldHandler(FieldHandler):
+
+class LiteralFieldHandler(FieldHandler[Any]):
     """Checker for literal types.
 
     It checks if the field is a literal type.
@@ -89,8 +123,22 @@ class LiteralFieldHandler(FieldHandler):
         """Return the number of dimensions for literal fields."""
         return 1
 
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> Any:  # noqa: ARG002
+        """Sample a value from the literal field based on the provided unit values."""
+        # Get all possible literal values
+        literal_values = get_args(field_info.annotation)
+        if not literal_values:
+            msg = "Literal field must have at least one value."
+            raise ValueError(msg)
 
-class SequenceFieldHandler(FieldHandler):
+        # Convert unit_values to an index
+        (unit_value,) = unit_values
+        assert 0.0 <= unit_value <= 1.0, "Unit value must be in [0, 1]."
+        index = int(unit_value * len(literal_values)) % len(literal_values)
+        return literal_values[index]
+
+
+class SequenceFieldHandler(FieldHandler[Any]):
     """Checker for sequence types with recursive element checking."""
 
     SEQUENCE_TYPES: ClassVar[set[type]] = {list, tuple, set}
@@ -124,8 +172,12 @@ class SequenceFieldHandler(FieldHandler):
         """Return the number of dimensions for sequence fields."""
         raise NotImplementedError
 
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> Any:
+        """Sample a value from the sequence field based on the provided unit values."""
+        raise NotImplementedError
 
-class BaseModelFieldHandler(FieldHandler):
+
+class BaseModelFieldHandler(FieldHandler[BaseModel]):
     """Checker for nested BoundedModel types."""
 
     def can_handle(self, field_info: FieldInfo) -> bool:
@@ -150,8 +202,17 @@ class BaseModelFieldHandler(FieldHandler):
         msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
         raise RuntimeError(msg)
 
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> BaseModel:
+        """Sample a BoundedModel instance based on the provided unit values."""
+        field_type = field_info.annotation
+        if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+            return registry.sample_model(unit_values, field_type)
 
-class OptionalFieldHandler(FieldHandler):
+        msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
+        raise RuntimeError(msg)
+
+
+class OptionalFieldHandler(FieldHandler[Any | None]):
     """Checker for Optional/Union types."""
 
     def can_handle(self, field_info: FieldInfo) -> bool:
@@ -185,4 +246,8 @@ class OptionalFieldHandler(FieldHandler):
         return True
 
     def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:
+        raise NotImplementedError
+
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> Any | None:
+        """Sample a value from the Optional/Union field based on the provided unit values."""
         raise NotImplementedError
