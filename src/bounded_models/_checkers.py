@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import types
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Union, get_args, get_origin
+from typing import TYPE_CHECKING, ClassVar, Literal, Union, get_args, get_origin
 
 import annotated_types
 from pydantic import BaseModel
@@ -58,6 +58,21 @@ class StringChecker(BoundednessChecker):
         return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
 
 
+class LiteralChecker(BoundednessChecker):
+    """Checker for literal types.
+
+    It checks if the field is a literal type.
+    """
+
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        """Check if the field is a literal type."""
+        return get_origin(field_info.annotation) is Literal
+
+    def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:  # noqa: ARG002
+        """Check if literal field is properly bounded."""
+        return get_origin(field_info.annotation) is Literal
+
+
 class SequenceChecker(BoundednessChecker):
     """Checker for sequence types with recursive element checking."""
 
@@ -89,25 +104,22 @@ class SequenceChecker(BoundednessChecker):
         return True
 
 
-class BoundedModelChecker(BoundednessChecker):
+class BaseModelChecker(BoundednessChecker):
     """Checker for nested BoundedModel types."""
 
     def can_handle(self, field_info: FieldInfo) -> bool:
         """Check if the field is a BoundedModel type."""
         field_type = field_info.annotation
-        # Handle both direct types and Optional types
-        origin = get_origin(field_type)
-        if origin is Union:
-            # Don't handle Union types here, let OptionalChecker do it
-            return False
-        return isinstance(field_type, type) and issubclass(field_type, BaseModel)
+        return inspect.isclass(field_type) and issubclass(field_type, BaseModel)
 
     def check(self, field_info: FieldInfo, registry: BoundednessCheckerRegistry) -> bool:
         """Check if the BoundedModel field is properly bounded."""
         field_type = field_info.annotation
-        if isinstance(field_type, type) and issubclass(field_type, BaseModel):
+        if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
             return registry.check_model(field_type)
-        return True
+
+        msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
+        raise RuntimeError(msg)
 
 
 class OptionalChecker(BoundednessChecker):

@@ -5,13 +5,11 @@ from __future__ import annotations
 import heapq
 from typing import TYPE_CHECKING
 
-from bounded_models._checkers import (
-    BoundedModelChecker,
+from ._checkers import (
+    BaseModelChecker,
     BoundednessChecker,
+    LiteralChecker,
     NumericChecker,
-    OptionalChecker,
-    SequenceChecker,
-    StringChecker,
 )
 
 if TYPE_CHECKING:
@@ -61,16 +59,21 @@ class BoundednessCheckerRegistry:
             _, _, checker = heapq.heappop(heap_copy)
             yield checker
 
-    def check_field(self, field_info: FieldInfo, *, fail_on_no_checker: bool = False) -> bool:
+    def check_field(self, field_info: FieldInfo, *, fail_on_no_checker: bool = True) -> bool:
         """Check if a field is properly bounded using appropriate checker."""
         # Find the first checker that can handle this type
+        found_handler = False
         for checker in self.iter_checkers():
             if checker.can_handle(field_info):
-                return checker.check(field_info, self)
+                found_handler = True
+                result = checker.check(field_info, self)
+                if not result:
+                    # If any checker returns False, exit early
+                    return False
 
-        return not fail_on_no_checker
+        return found_handler or not fail_on_no_checker
 
-    def check_model(self, model: type[BaseModel], *, fail_on_no_checker: bool = False) -> bool:
+    def check_model(self, model: type[BaseModel], *, fail_on_no_checker: bool = True) -> bool:
         """Check if all fields in a model are properly bounded."""
         return all(
             self.check_field(field_info, fail_on_no_checker=fail_on_no_checker)
@@ -81,27 +84,24 @@ class BoundednessCheckerRegistry:
     def default(cls) -> BoundednessCheckerRegistry:
         """Get the default registry instance."""
         # TODO: Reconsider the selection of default checkers
-        # TODO: Use priority queue for checkers?
         return cls(
             checkers=[
-                OptionalChecker(),
-                BoundedModelChecker(),
-                SequenceChecker(),
                 NumericChecker(),
-                StringChecker(),
+                LiteralChecker(),
+                BaseModelChecker(),
             ],
         )
 
 
 # Global registry instance
-_registry = BoundednessCheckerRegistry.default()
+default_registry = BoundednessCheckerRegistry.default()
 
 
 def is_field_bounded(field_info: FieldInfo) -> bool:
     """Check if a single field is properly bounded using the type checker registry."""
-    return _registry.check_field(field_info)
+    return default_registry.check_field(field_info)
 
 
 def is_model_bounded(model_class: type[BaseModel]) -> bool:
     """Check if all fields in a model are properly bounded."""
-    return _registry.check_model(model_class)
+    return default_registry.check_model(model_class)

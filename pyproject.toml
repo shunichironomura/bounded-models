@@ -50,6 +50,7 @@ ignore = [
     "G",       # logging format
     #     "ANN101",  # missing type annotation for self in method
     #     "ANN102",  # missing type annotation for cls in classmethod
+    "C901", # function is too complex
     #     "D100",    # missing docstring in public module
     #     "D101",    # missing docstring in public class
     #     "D102",    # missing docstring in public method

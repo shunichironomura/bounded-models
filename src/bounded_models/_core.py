@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 from ._registry import is_model_bounded
@@ -8,22 +10,15 @@ from ._registry import is_model_bounded
 class BoundedModel(BaseModel):
     """Base class for bounded models.
 
-    This class can be used to define models with bounded fields.
-    It inherits from `pydantic.BaseModel` and can be extended with additional functionality.
+    This class ensures that all fields in the model are properly bounded.
     """
 
     @classmethod
-    def is_bounded(cls) -> bool:
-        """Check if all fields in the model are properly bounded.
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Validate that the model is properly bounded when subclassed."""
+        super().__pydantic_init_subclass__(**kwargs)
 
-        Returns:
-            True if the model is properly bounded according to the rules, False otherwise.
-
-        Rules for bounded fields:
-        - float/int: Must have both lower (ge/gt) and upper (le/lt) bounds
-        - str: Must have max_length (and optionally min_length)
-        - list/tuple/set: Must have max_length/max_items (and optionally min_length/min_items)
-        - BoundedModel: Recursively check nested models
-
-        """
-        return is_model_bounded(cls)
+        # Check if the model is properly bounded
+        if not is_model_bounded(cls):
+            msg = f"Model {cls.__name__} is not properly bounded. All fields must have appropriate bounds defined."
+            raise ValueError(msg)
