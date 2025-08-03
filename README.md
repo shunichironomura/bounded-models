@@ -1,5 +1,13 @@
 # Bounded Models
 
+[![PyPI](https://img.shields.io/pypi/v/bounded-models)](https://pypi.org/project/bounded-models/)
+![PyPI - License](https://img.shields.io/pypi/l/bounded-models)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bounded-models)
+[![Test Status](https://github.com/shunichironomura/bounded-models/actions/workflows/ci.yaml/badge.svg)](https://github.com/shunichironomura/bounded-models/actions)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/bounded-models)
+
 > [!WARNING]
 > This project is in early development and not ready for use.
 > The functionality is not yet complete or incorrectly implemented, and the API may change significantly.
