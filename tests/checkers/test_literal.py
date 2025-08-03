@@ -47,4 +47,5 @@ def test_literal_handler(
     """Test numeric handler for boundedness."""
     assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert handler.check(field_info, registry) == bounded
+        assert handler.check_boundedness(field_info, registry) == bounded
+        assert handler.n_dimensions(field_info, registry) == 1

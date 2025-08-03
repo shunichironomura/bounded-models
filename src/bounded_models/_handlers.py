@@ -1,4 +1,4 @@
-"""Boundedness handlers."""
+"""Field handlers."""
 
 from __future__ import annotations
 
@@ -24,8 +24,13 @@ class FieldHandler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
         """Check if the field is properly bounded, using registry for recursive checks."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:
+        """Return the number of dimensions for the field."""
         raise NotImplementedError
 
 
@@ -36,11 +41,15 @@ class NumericFieldHandler(FieldHandler):
         """Check if the field is a numeric type."""
         return field_info.annotation in (int, float)
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
         """Check if numeric field has both lower and upper bounds."""
         has_lower = any(isinstance(m, (annotated_types.Ge, annotated_types.Gt)) for m in field_info.metadata)
         has_upper = any(isinstance(m, (annotated_types.Le, annotated_types.Lt)) for m in field_info.metadata)
         return has_lower and has_upper
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:  # noqa: ARG002
+        """Return the number of dimensions for numeric fields."""
+        return 1
 
 
 class StringFieldHandler(FieldHandler):
@@ -53,9 +62,13 @@ class StringFieldHandler(FieldHandler):
         """Check if the field is a string type."""
         return field_info.annotation is str
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
         """Check if string field has max_length constraint."""
         return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:  # noqa: ARG002
+        """Return the number of dimensions for string fields."""
+        return 1
 
 
 class LiteralFieldHandler(FieldHandler):
@@ -68,9 +81,13 @@ class LiteralFieldHandler(FieldHandler):
         """Check if the field is a literal type."""
         return get_origin(field_info.annotation) is Literal
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
         """Check if literal field is properly bounded."""
         return get_origin(field_info.annotation) is Literal
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:  # noqa: ARG002
+        """Return the number of dimensions for literal fields."""
+        return 1
 
 
 class SequenceFieldHandler(FieldHandler):
@@ -83,7 +100,7 @@ class SequenceFieldHandler(FieldHandler):
         origin = field_info.annotation if inspect.isclass(field_info.annotation) else get_origin(field_info.annotation)
         return origin in self.SEQUENCE_TYPES
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
         """Check if sequence field has max_length constraint and recursively checks elements."""
         # First check if the sequence itself is bounded
         has_max_len = any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
@@ -98,10 +115,14 @@ class SequenceFieldHandler(FieldHandler):
             # Primitive types in sequences don't need individual bounds
             if isinstance(element_type, type) and issubclass(element_type, BaseModel):
                 element_field = FieldInfo(annotation=element_type, default=...)
-                if not registry.check_field(element_field):
+                if not registry.check_field_boundedness(element_field):
                     return False
 
         return True
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:
+        """Return the number of dimensions for sequence fields."""
+        raise NotImplementedError
 
 
 class BaseModelFieldHandler(FieldHandler):
@@ -112,12 +133,20 @@ class BaseModelFieldHandler(FieldHandler):
         field_type = field_info.annotation
         return inspect.isclass(field_type) and issubclass(field_type, BaseModel)
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
         """Check if the BoundedModel field is properly bounded."""
         field_type = field_info.annotation
         if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
-            return registry.check_model(field_type)
+            return registry.check_model_boundedness(field_type)
 
+        msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
+        raise RuntimeError(msg)
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:
+        """Return the number of dimensions for BoundedModel fields."""
+        field_type = field_info.annotation
+        if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+            return registry.model_dimensions(field_type)
         msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
         raise RuntimeError(msg)
 
@@ -131,7 +160,7 @@ class OptionalFieldHandler(FieldHandler):
         # Handle both typing.Union and types.UnionType (Python 3.10+ | syntax)
         return origin is Union or (hasattr(types, "UnionType") and origin is types.UnionType)
 
-    def check(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:
         """Check if Optional/Union field is properly bounded."""
         args = get_args(field_info.annotation)
         non_none_types = [t for t in args if t is not type(None)]
@@ -145,12 +174,15 @@ class OptionalFieldHandler(FieldHandler):
                 default=...,
                 metadata=field_info.metadata,
             )
-            return registry.check_field(inner_field)
+            return registry.check_field_boundedness(inner_field)
 
         # For other Union types, all must be bounded
         for t in non_none_types:
             # TODO: Should not create `FieldInfo` directly.
             inner_field = FieldInfo(annotation=t, default=..., metadata=field_info.metadata)  # type: ignore[call-arg]
-            if not registry.check_field(inner_field):
+            if not registry.check_field_boundedness(inner_field):
                 return False
         return True
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:
+        raise NotImplementedError

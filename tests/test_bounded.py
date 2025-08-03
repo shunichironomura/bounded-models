@@ -144,9 +144,12 @@ def test_custom_type_handler() -> None:
         def can_handle(self, field_info: Any) -> bool:
             return get_origin(field_info.annotation) is dict or field_info.annotation is dict
 
-        def check(self, field_info: Any, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
+        def check_boundedness(self, field_info: Any, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
             # Check for max_length constraint
             return any(isinstance(m, annotated_types.MaxLen) for m in field_info.metadata)
+
+        def n_dimensions(self, field_info: Any, registry: FieldHandlerRegistry) -> int:
+            raise NotImplementedError
 
     registry.register(DictHandler())
 
@@ -154,7 +157,7 @@ def test_custom_type_handler() -> None:
         bounded_dict: dict[str, int] = Field(max_length=10)
         unbounded_dict: dict[str, str]
 
-    assert not registry.check_model(ModelWithDict)
+    assert not registry.check_model_boundedness(ModelWithDict)
 
 
 @pytest.mark.xfail(reason="This should be fixed in the future")

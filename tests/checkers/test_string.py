@@ -48,4 +48,4 @@ def test_string_handler(
     """Test string handler for boundedness."""
     assert handler.can_handle(field_info) == can_handle
     if can_handle:
-        assert handler.check(field_info, registry) == bounded
+        assert handler.check_boundedness(field_info, registry) == bounded

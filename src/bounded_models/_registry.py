@@ -59,26 +59,38 @@ class FieldHandlerRegistry:
             _, _, handler = heapq.heappop(heap_copy)
             yield handler
 
-    def check_field(self, field_info: FieldInfo, *, fail_on_no_handler: bool = True) -> bool:
+    def check_field_boundedness(self, field_info: FieldInfo, *, fail_on_no_handler: bool = True) -> bool:
         """Check if a field is properly bounded using appropriate handler."""
         # Find the first handler that can handle this type
         found_handler = False
         for handler in self.iter_handlers():
             if handler.can_handle(field_info):
                 found_handler = True
-                result = handler.check(field_info, self)
+                result = handler.check_boundedness(field_info, self)
                 if not result:
                     # If any handler returns False, exit early
                     return False
 
         return found_handler or not fail_on_no_handler
 
-    def check_model(self, model: type[BaseModel], *, fail_on_no_handler: bool = True) -> bool:
+    def check_model_boundedness(self, model: type[BaseModel], *, fail_on_no_handler: bool = True) -> bool:
         """Check if all fields in a model are properly bounded."""
         return all(
-            self.check_field(field_info, fail_on_no_handler=fail_on_no_handler)
+            self.check_field_boundedness(field_info, fail_on_no_handler=fail_on_no_handler)
             for field_info in model.model_fields.values()
         )
+
+    def field_dimensions(self, field_info: FieldInfo) -> int:
+        """Return the number of dimensions for a field."""
+        for handler in self.iter_handlers():
+            if handler.can_handle(field_info):
+                return handler.n_dimensions(field_info, self)
+        msg = f"No handler found for field with annotation {field_info.annotation}"
+        raise ValueError(msg)
+
+    def model_dimensions(self, model: type[BaseModel]) -> int:
+        """Return the number of dimensions for a model."""
+        return sum(self.field_dimensions(field_info) for field_info in model.model_fields.values())
 
     @classmethod
     def default(cls) -> FieldHandlerRegistry:
@@ -99,9 +111,9 @@ default_registry = FieldHandlerRegistry.default()
 
 def is_field_bounded(field_info: FieldInfo) -> bool:
     """Check if a single field is properly bounded using the field handler registry."""
-    return default_registry.check_field(field_info)
+    return default_registry.check_field_boundedness(field_info)
 
 
 def is_model_bounded(model_class: type[BaseModel]) -> bool:
     """Check if all fields in a model are properly bounded."""
-    return default_registry.check_model(model_class)
+    return default_registry.check_model_boundedness(model_class)
