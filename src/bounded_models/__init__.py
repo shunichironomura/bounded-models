@@ -16,7 +16,6 @@ __all__ = [
     "is_model_bounded",
 ]
 
-from ._core import BoundedModel
 from ._handlers import (
     BaseModelFieldHandler,
     FieldHandler,
@@ -26,4 +25,5 @@ from ._handlers import (
     SequenceFieldHandler,
     StringFieldHandler,
 )
+from ._model import BoundedModel
 from ._registry import FieldHandlerRegistry, is_field_bounded, is_model_bounded
