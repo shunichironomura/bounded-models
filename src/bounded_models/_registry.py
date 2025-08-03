@@ -81,7 +81,6 @@ class BoundednessCheckerRegistry:
     def default(cls) -> BoundednessCheckerRegistry:
         """Get the default registry instance."""
         # TODO: Reconsider the selection of default checkers
-        # TODO: Use priority queue for checkers?
         return cls(
             checkers=[
                 OptionalChecker(),
