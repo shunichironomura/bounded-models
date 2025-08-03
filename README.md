@@ -4,8 +4,12 @@
 > This project is in early development and not ready for use.
 > The functionality is not yet complete or incorrectly implemented, and the API may change significantly.
 
-A bounded model is a subclass of `Pydantic.BaseModel` whose domain is restricted to a "bounded" set of values.
+This package provides a framework to check if Pydantic models are "bounded". A bounded model is one where all fields have defined constraints that create a "bounded" set of valid values, enabling uniform sampling from the constrained space.
 
-Loosely, a model is bounded if you can sample instances "uniformly". Note that the definition of "uniform" is not strict; it does not imply the probability distribution of the samples.
+It also provides a convenient class `BoundedModel`, a subclass of `Pydantic.BaseModel` that automatically checks if the model is bounded when instantiated.
 
-Using `BoundedModel` is useful for sampling model instances "uniformly" from the bounded set.
+## Supported field types
+
+- **Numeric Types**: `int`, `float` with both upper and lower bounds
+- **Literal Types**: `Literal` values
+- **BaseModel Types**: Nested `BoundedModel` instances

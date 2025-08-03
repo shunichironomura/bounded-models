@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 __all__ = [
+    "BaseModelChecker",
     "BoundedModel",
-    "BoundedModelChecker",
     "BoundednessChecker",
     "BoundednessCheckerRegistry",
+    "LiteralChecker",
     "NumericChecker",
     "OptionalChecker",
     "SequenceChecker",
@@ -16,8 +17,9 @@ __all__ = [
 ]
 
 from ._checkers import (
-    BoundedModelChecker,
+    BaseModelChecker,
     BoundednessChecker,
+    LiteralChecker,
     NumericChecker,
     OptionalChecker,
     SequenceChecker,

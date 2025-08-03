@@ -6,12 +6,10 @@ import heapq
 from typing import TYPE_CHECKING
 
 from ._checkers import (
-    BoundedModelChecker,
+    BaseModelChecker,
     BoundednessChecker,
+    LiteralChecker,
     NumericChecker,
-    OptionalChecker,
-    SequenceChecker,
-    StringChecker,
 )
 
 if TYPE_CHECKING:
@@ -89,8 +87,8 @@ class BoundednessCheckerRegistry:
         return cls(
             checkers=[
                 NumericChecker(),
-                StringChecker(),
-                BoundedModelChecker(),
+                LiteralChecker(),
+                BaseModelChecker(),
             ],
         )
 
