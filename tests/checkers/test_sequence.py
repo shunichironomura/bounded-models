@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 from pydantic.fields import FieldInfo
 
-from bounded_models import BoundednessCheckerRegistry, SequenceChecker
+from bounded_models import BoundednessCheckerRegistry, NumericChecker, SequenceChecker
 
 
 @pytest.fixture
@@ -16,11 +16,11 @@ def checker() -> SequenceChecker:
 @pytest.fixture
 def registry(checker: SequenceChecker) -> BoundednessCheckerRegistry:
     """Create a type checker registry instance."""
-    return BoundednessCheckerRegistry(checkers=[checker])
+    return BoundednessCheckerRegistry(checkers=[checker, NumericChecker()])
 
 
 _BOUNDED_FIELDS = [
-    FieldInfo(annotation=list[Annotated[str, FieldInfo(annotation=NoneType, max_length=10)]]),
+    FieldInfo(annotation=list[Annotated[str, FieldInfo(annotation=NoneType, max_length=10)]], max_length=5),
 ]
 
 _UNBOUNDED_FIELDS = [
