@@ -163,6 +163,7 @@ class EnumFieldHandler(FieldHandler[Enum]):
     def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> Enum:  # noqa: ARG002
         """Sample a value from the enum field based on the provided unit values."""
         enum_class = field_info.annotation
+        assert inspect.isclass(enum_class) and issubclass(enum_class, Enum), "Annotation must be an Enum type."
         members = list(enum_class)
         if not members:
             msg = "Enum field must have at least one member."
