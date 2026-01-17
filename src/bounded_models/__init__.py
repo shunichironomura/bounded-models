@@ -5,6 +5,7 @@ from __future__ import annotations
 __all__ = [
     "BaseModelFieldHandler",
     "BoundedModel",
+    "EnumFieldHandler",
     "FieldHandler",
     "FieldHandlerRegistry",
     "LiteralFieldHandler",
@@ -18,6 +19,7 @@ __all__ = [
 
 from ._handlers import (
     BaseModelFieldHandler,
+    EnumFieldHandler,
     FieldHandler,
     LiteralFieldHandler,
     NumericFieldHandler,
