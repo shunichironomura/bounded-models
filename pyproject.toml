@@ -1,6 +1,6 @@
 [project]
 name = "bounded-models"
-version = "0.0.2"
+version = "0.0.3"
 description = "A framework to check if Pydantic models are bounded"
 readme = "README.md"
 requires-python = ">=3.13"
