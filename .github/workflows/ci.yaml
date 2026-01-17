@@ -20,7 +20,6 @@ concurrency:
 
 jobs:
   ruff:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -40,8 +39,7 @@ jobs:
       - name: Run ruff
         run: uv run -- ruff check
 
-  mypy:
-    if: github.event.pull_request.draft == false
+  ty:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -59,11 +57,10 @@ jobs:
       - name: Install the project
         run: uv sync --no-dev --group typing
 
-      - name: Run mypy
-        run: uv run -- mypy .
+      - name: Run ty
+        run: uv run -- ty check .
 
   pytest:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
@@ -103,9 +100,8 @@ jobs:
       #     push: "origin HEAD:${{ github.head_ref }} --force"
 
   collect:
-    if: github.event.pull_request.draft == false
-    needs: [ruff, mypy, pytest]
+    needs: [ruff, ty, pytest]
     runs-on: ubuntu-latest
     steps:
-    - name: Collect results
-      run: echo "All checks passed!"
+      - name: Collect results
+        run: echo "All checks passed!"

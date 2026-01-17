@@ -19,8 +19,8 @@ def registry(handler: LiteralFieldHandler) -> FieldHandlerRegistry:
 
 
 _BOUNDED_FIELDS = [
-    FieldInfo(annotation=Literal[1, 2, 3]),  # type: ignore[arg-type]
-    FieldInfo(annotation=Literal["a", "b"]),  # type: ignore[arg-type]
+    FieldInfo(annotation=Literal[1, 2, 3]),
+    FieldInfo(annotation=Literal["a", "b"]),
 ]
 
 _UNBOUNDED_FIELDS: list[FieldInfo] = []
