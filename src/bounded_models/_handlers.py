@@ -230,7 +230,7 @@ class OptionalFieldHandler(FieldHandler[Any | None]):
             # This is Optional[T], check T
 
             # TODO: Should not create `FieldInfo` directly.
-            inner_field = FieldInfo(  # type: ignore[call-arg]
+            inner_field = FieldInfo(
                 annotation=non_none_types[0],
                 default=...,
                 metadata=field_info.metadata,
@@ -240,7 +240,7 @@ class OptionalFieldHandler(FieldHandler[Any | None]):
         # For other Union types, all must be bounded
         for t in non_none_types:
             # TODO: Should not create `FieldInfo` directly.
-            inner_field = FieldInfo(annotation=t, default=..., metadata=field_info.metadata)  # type: ignore[call-arg]
+            inner_field = FieldInfo(annotation=t, default=..., metadata=field_info.metadata)
             if not registry.check_field_boundedness(inner_field):
                 return False
         return True

@@ -38,7 +38,7 @@ class FieldHandlerRegistry:
                 assert len(handler) == 2, "Handler must be a tuple of (priority, handler) or just a handler."
                 assert isinstance(handler[0], int), "Handler priority must be an integer."
                 assert isinstance(handler[1], FieldHandler), "Handler must be an instance of FieldHandler."
-                return handler
+                return handler  # ty: ignore[invalid-return-type] # Checked by the assert statements
             assert isinstance(handler, FieldHandler), "Handler must be an instance of FieldHandler."
             return (0, handler)
 
@@ -48,7 +48,7 @@ class FieldHandlerRegistry:
         heap_with_counter = [(priority, i, handler) for i, (priority, handler) in enumerate(heap)]
 
         heapq.heapify(heap_with_counter)
-        self._handlers: list[tuple[int, int, FieldHandler]] = heap_with_counter
+        self._handlers: list[tuple[int, int, FieldHandler]] = heap_with_counter  # list of (priority, counter, handler)
 
     def register(self, handler: FieldHandler, priority: int = 0) -> None:
         """Register a new type handler at the given priority position."""
