@@ -6,6 +6,7 @@ import inspect
 import math
 import types
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Union, get_args, get_origin
 
 import annotated_types
@@ -136,6 +137,45 @@ class LiteralFieldHandler(FieldHandler[Any]):
         assert 0.0 <= unit_value <= 1.0, "Unit value must be in [0, 1]."
         index = int(unit_value * len(literal_values)) % len(literal_values)
         return literal_values[index]
+
+
+class EnumFieldHandler(FieldHandler[Enum]):
+    """Checker for enum types.
+
+    Enum fields are inherently bounded since they have a finite set of members.
+    """
+
+    def can_handle(self, field_info: FieldInfo) -> bool:
+        """Check if the field is an Enum type."""
+        return inspect.isclass(field_info.annotation) and issubclass(field_info.annotation, Enum)
+
+    def check_boundedness(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool:  # noqa: ARG002
+        """Check if enum field is properly bounded.
+
+        Enum fields are always bounded since they have a finite set of members.
+        """
+        return inspect.isclass(field_info.annotation) and issubclass(field_info.annotation, Enum)
+
+    def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int:  # noqa: ARG002
+        """Return the number of dimensions for enum fields."""
+        return 1
+
+    def sample(self, unit_values: Iterable[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> Enum:  # noqa: ARG002
+        """Sample a value from the enum field based on the provided unit values."""
+        enum_class = field_info.annotation
+        assert inspect.isclass(enum_class), "Annotation must be a class."
+        assert issubclass(enum_class, Enum), "Annotation must be an Enum type."
+        members = list(enum_class)
+        if not members:
+            msg = "Enum field must have at least one member."
+            raise ValueError(msg)
+
+        # Convert unit_values to an index
+        (unit_value,) = unit_values
+        assert 0.0 <= unit_value <= 1.0, "Unit value must be in [0, 1]."
+        # Ensure we don't go out of bounds even if unit_value is 1.0
+        index = min(int(unit_value * len(members)), len(members) - 1)
+        return members[index]
 
 
 class SequenceFieldHandler(FieldHandler[Any]):
