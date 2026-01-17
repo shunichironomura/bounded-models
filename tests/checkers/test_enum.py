@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, Flag, IntEnum, IntFlag, StrEnum
 
 import pytest
 from pydantic.fields import FieldInfo
@@ -22,6 +22,30 @@ class SingleValue(Enum):
     ONLY = "only"
 
 
+class Priority(IntEnum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+
+class HttpMethod(StrEnum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+
+
+class Permission(Flag):
+    READ = 1
+    WRITE = 2
+    EXECUTE = 4
+
+
+class FileMode(IntFlag):
+    READ = 4
+    WRITE = 2
+    EXECUTE = 1
+
+
 @pytest.fixture
 def handler() -> EnumFieldHandler:
     """Create an enum handler instance."""
@@ -38,6 +62,10 @@ _BOUNDED_FIELDS = [
     FieldInfo(annotation=Color),
     FieldInfo(annotation=Status),
     FieldInfo(annotation=SingleValue),
+    FieldInfo(annotation=Priority),
+    FieldInfo(annotation=HttpMethod),
+    FieldInfo(annotation=Permission),
+    FieldInfo(annotation=FileMode),
 ]
 
 _UNBOUNDED_FIELDS: list[FieldInfo] = []
@@ -88,6 +116,22 @@ def test_enum_handler(
         (FieldInfo(annotation=SingleValue), 0.0, SingleValue.ONLY),
         (FieldInfo(annotation=SingleValue), 0.5, SingleValue.ONLY),
         (FieldInfo(annotation=SingleValue), 1.0, SingleValue.ONLY),
+        # IntEnum
+        (FieldInfo(annotation=Priority), 0.0, Priority.LOW),
+        (FieldInfo(annotation=Priority), 0.5, Priority.MEDIUM),
+        (FieldInfo(annotation=Priority), 1.0, Priority.HIGH),
+        # StrEnum
+        (FieldInfo(annotation=HttpMethod), 0.0, HttpMethod.GET),
+        (FieldInfo(annotation=HttpMethod), 0.5, HttpMethod.POST),
+        (FieldInfo(annotation=HttpMethod), 1.0, HttpMethod.PUT),
+        # Flag
+        (FieldInfo(annotation=Permission), 0.0, Permission.READ),
+        (FieldInfo(annotation=Permission), 0.5, Permission.WRITE),
+        (FieldInfo(annotation=Permission), 1.0, Permission.EXECUTE),
+        # IntFlag
+        (FieldInfo(annotation=FileMode), 0.0, FileMode.READ),
+        (FieldInfo(annotation=FileMode), 0.5, FileMode.WRITE),
+        (FieldInfo(annotation=FileMode), 1.0, FileMode.EXECUTE),
     ],
 )
 def test_enum_handler_sample(
