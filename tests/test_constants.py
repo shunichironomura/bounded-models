@@ -120,8 +120,8 @@ class TestSampleModel:
     """Tests for sample_model with allow_constants."""
 
     def test_sample_model_with_constants(self, registry: FieldHandlerRegistry) -> None:
-        """Model with constants uses default values."""
-        result = registry.sample_model([0.5], ConfigWithConstants)
+        """Model with constants uses default values when allow_constants=True."""
+        result = registry.sample_model([0.5], ConfigWithConstants, allow_constants=True)
         assert isinstance(result, ConfigWithConstants)
         assert result.count == 42  # Default value
         assert result.rate == 0.5  # Sampled
@@ -133,39 +133,39 @@ class TestSampleModel:
         assert result.x == 0.25
         assert result.y == 0.75
 
-    def test_sample_model_disallow_constants(self, registry: FieldHandlerRegistry) -> None:
-        """sample_model with allow_constants=False raises for constants."""
+    def test_sample_model_default_strict(self, registry: FieldHandlerRegistry) -> None:
+        """sample_model defaults to strict mode (allow_constants=False)."""
         with pytest.raises(UnboundedFieldError):
-            registry.sample_model([0.5], ConfigWithConstants, allow_constants=False)
+            registry.sample_model([0.5], ConfigWithConstants)
 
     def test_sample_model_without_default(self, registry: FieldHandlerRegistry) -> None:
         """sample_model raises MissingDefaultError for unbounded without default."""
         with pytest.raises(MissingDefaultError):
-            registry.sample_model([0.5], ConfigWithoutDefault)
+            registry.sample_model([0.5], ConfigWithoutDefault, allow_constants=True)
 
 
 class TestModuleLevelFunctions:
     """Tests for module-level convenience functions."""
 
-    def test_field_dimensions_default(self) -> None:
-        """field_dimensions defaults to allow_constants=True."""
-        info = ConfigWithConstants.model_fields["count"]
-        assert field_dimensions(info) == 0  # Constant
-
-    def test_field_dimensions_disallow(self) -> None:
-        """field_dimensions with allow_constants=False raises."""
+    def test_field_dimensions_default_strict(self) -> None:
+        """field_dimensions defaults to strict mode (allow_constants=False)."""
         info = ConfigWithConstants.model_fields["count"]
         with pytest.raises(UnboundedFieldError):
-            field_dimensions(info, allow_constants=False)
+            field_dimensions(info)
 
-    def test_model_dimensions_default(self) -> None:
-        """model_dimensions defaults to allow_constants=True."""
-        assert model_dimensions(ConfigWithConstants) == 1  # Only rate
+    def test_field_dimensions_allow(self) -> None:
+        """field_dimensions with allow_constants=True returns 0 for constants."""
+        info = ConfigWithConstants.model_fields["count"]
+        assert field_dimensions(info, allow_constants=True) == 0  # Constant
 
-    def test_model_dimensions_disallow(self) -> None:
-        """model_dimensions with allow_constants=False raises."""
+    def test_model_dimensions_default_strict(self) -> None:
+        """model_dimensions defaults to strict mode (allow_constants=False)."""
         with pytest.raises(UnboundedFieldError):
-            model_dimensions(ConfigWithConstants, allow_constants=False)
+            model_dimensions(ConfigWithConstants)
+
+    def test_model_dimensions_allow(self) -> None:
+        """model_dimensions with allow_constants=True returns only bounded dimensions."""
+        assert model_dimensions(ConfigWithConstants, allow_constants=True) == 1  # Only rate
 
 
 class TestBoundedModelAllowConstants:

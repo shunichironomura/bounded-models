@@ -149,7 +149,7 @@ class FieldHandlerRegistry:
         self,
         field_info: FieldInfo,
         *,
-        allow_constants: bool = True,
+        allow_constants: bool = False,
         field_name: str | None = None,
     ) -> int:
         """Return the number of dimensions for a field.
@@ -188,7 +188,7 @@ class FieldHandlerRegistry:
         msg = f"No handler found for field with annotation {field_info.annotation}"
         raise ValueError(msg)
 
-    def model_dimensions(self, model: type[BaseModel], *, allow_constants: bool = True) -> int:
+    def model_dimensions(self, model: type[BaseModel], *, allow_constants: bool = False) -> int:
         """Return the number of dimensions for a model.
 
         Args:
@@ -214,7 +214,7 @@ class FieldHandlerRegistry:
         unit_values: Iterable[float],
         field_info: FieldInfo,
         *,
-        allow_constants: bool = True,
+        allow_constants: bool = False,
         field_name: str | None = None,
     ) -> Any:
         """Sample a value from a field based on the provided unit values.
@@ -261,7 +261,7 @@ class FieldHandlerRegistry:
         unit_values: Iterable[float],
         model: type[BaseModel],
         *,
-        allow_constants: bool = True,
+        allow_constants: bool = False,
     ) -> BaseModel:
         """Sample a model instance based on the provided unit values.
 
@@ -321,7 +321,7 @@ def is_model_bounded(model_class: type[BaseModel]) -> bool:
     return default_registry.check_model_boundedness(model_class)
 
 
-def field_dimensions(field_info: FieldInfo, *, allow_constants: bool = True) -> int:
+def field_dimensions(field_info: FieldInfo, *, allow_constants: bool = False) -> int:
     """Return the number of dimensions for a field.
 
     Args:
@@ -336,7 +336,7 @@ def field_dimensions(field_info: FieldInfo, *, allow_constants: bool = True) -> 
     return default_registry.field_dimensions(field_info, allow_constants=allow_constants)
 
 
-def model_dimensions(model_class: type[BaseModel], *, allow_constants: bool = True) -> int:
+def model_dimensions(model_class: type[BaseModel], *, allow_constants: bool = False) -> int:
     """Return the total number of dimensions for a model.
 
     Args:
