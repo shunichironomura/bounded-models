@@ -13,23 +13,23 @@ The central registry for field handlers.
 ```python
 class FieldHandlerRegistry:
     def __init__(self, handlers: Sequence[FieldHandler]) -> None: ...
-    
+
     @classmethod
     def default(cls) -> FieldHandlerRegistry:
         """Create a registry with all built-in handlers."""
-    
+
     def check_field_boundedness(
         self,
         field_info: FieldInfo,
     ) -> bool:
         """Check if a field is bounded."""
-    
+
     def check_model_boundedness(
         self,
         model: type[BaseModel],
     ) -> bool:
         """Check if all fields in a model are bounded."""
-    
+
     def field_dimensions(
         self,
         field_info: FieldInfo,
@@ -38,7 +38,7 @@ class FieldHandlerRegistry:
         field_name: str | None = None,
     ) -> int:
         """Get the number of dimensions for a field."""
-    
+
     def model_dimensions(
         self,
         model: type[BaseModel],
@@ -46,7 +46,7 @@ class FieldHandlerRegistry:
         allow_constants: bool = False,
     ) -> int:
         """Get the total dimensions for a model."""
-    
+
     def sample_field(
         self,
         unit_values: Sequence[float],
@@ -56,7 +56,7 @@ class FieldHandlerRegistry:
         field_name: str | None = None,
     ) -> Any:
         """Sample a field value from unit hypercube values."""
-    
+
     def sample_model(
         self,
         unit_values: Sequence[float],

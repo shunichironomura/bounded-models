@@ -19,7 +19,7 @@ class NumericExample(BaseModel):
     # Both bounds required for boundedness
     temperature: float = Field(ge=-40.0, le=50.0)
     count: int = Field(ge=0, le=100)
-    
+
     # These are NOT bounded (missing bounds)
     # unbounded_float: float = Field(ge=0.0)  # Missing upper bound
     # unbounded_int: int  # No constraints

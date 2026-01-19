@@ -67,7 +67,7 @@ class StrictModel(BoundedModel):
 
 class LenientModel(BoundedModel):
     __allow_constants__ = True
-    
+
     name: str = "default"  # OK: has default
     x: float = Field(ge=0.0, le=1.0)
 ```
