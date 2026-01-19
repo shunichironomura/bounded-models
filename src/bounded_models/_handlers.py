@@ -238,7 +238,8 @@ class BaseModelFieldHandler(FieldHandler[BaseModel]):
         """Return the number of dimensions for BoundedModel fields."""
         field_type = field_info.annotation
         if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
-            return registry.model_dimensions(field_type)
+            # Use internal method to get raw dimensions (without allow_constants checks)
+            return registry._raw_model_dimensions(field_type)  # noqa: SLF001
         msg = "This line should not be reached: BoundedModelChecker can only handle BaseModel subclasses."
         raise RuntimeError(msg)
 
