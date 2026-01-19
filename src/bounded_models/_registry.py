@@ -250,7 +250,7 @@ class FieldHandlerRegistry:
                     raise MissingDefaultError(_field_name, field_info.annotation)
                 # Return default value (or call default_factory)
                 if field_info.default_factory is not None:
-                    return field_info.default_factory()
+                    return field_info.default_factory()  # ty: ignore[missing-argument]
                 return field_info.default
 
         msg = f"No handler found for field with annotation {field_info.annotation}"

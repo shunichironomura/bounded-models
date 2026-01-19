@@ -122,12 +122,14 @@ class TestSampleModel:
     def test_sample_model_with_constants(self, registry: FieldHandlerRegistry) -> None:
         """Model with constants uses default values."""
         result = registry.sample_model([0.5], ConfigWithConstants)
+        assert isinstance(result, ConfigWithConstants)
         assert result.count == 42  # Default value
         assert result.rate == 0.5  # Sampled
 
     def test_sample_fully_bounded(self, registry: FieldHandlerRegistry) -> None:
         """Fully bounded model samples all fields."""
         result = registry.sample_model([0.25, 0.75], FullyBoundedConfig)
+        assert isinstance(result, FullyBoundedConfig)
         assert result.x == 0.25
         assert result.y == 0.75
 
@@ -262,5 +264,6 @@ class TestDefaultFactory:
 
         # Sample should use the factory (unit value 0.5 maps to rate=5.0)
         result = registry.sample_model([0.5], ConfigWithFactory, allow_constants=True)
+        assert isinstance(result, ConfigWithFactory)
         assert result.tags == "default_tag"
         assert result.rate == 5.0
