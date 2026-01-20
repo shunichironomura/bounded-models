@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import heapq
+import inspect
 from typing import TYPE_CHECKING, Any
 
 from more_itertools import take
+from pydantic import BaseModel
 
 from ._handlers import (
     BaseModelFieldHandler,
@@ -13,11 +15,15 @@ from ._handlers import (
     LiteralFieldHandler,
     NumericFieldHandler,
 )
+from ._overrides import (
+    FieldOverride,
+    extract_nested_overrides,
+    merge_field_override,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
-    from pydantic import BaseModel
     from pydantic.fields import FieldInfo
 
 
@@ -151,6 +157,7 @@ class FieldHandlerRegistry:
         *,
         allow_constants: bool = False,
         field_name: str | None = None,
+        override: FieldOverride | None = None,
     ) -> int:
         """Return the number of dimensions for a field.
 
@@ -159,6 +166,7 @@ class FieldHandlerRegistry:
             allow_constants: If True, returns 0 for unbounded fields with defaults.
                            If False, raises UnboundedFieldError for unbounded fields.
             field_name: Optional field name for error messages.
+            override: Optional override to apply to the field.
 
         Returns:
             Number of unit values needed. 0 means the field is a constant.
@@ -171,30 +179,46 @@ class FieldHandlerRegistry:
         """
         _field_name = field_name or "<unknown>"
 
+        # Apply override if provided
+        effective_field_info = field_info
+        if override is not None:
+            # If override has a default, treat as constant (0 dimensions)
+            if override.has_default():
+                return 0
+            effective_field_info = merge_field_override(field_info, override)
+
         for handler in self.iter_handlers():
-            if handler.can_handle(field_info):
-                if handler.check_boundedness(field_info, self):
+            if handler.can_handle(effective_field_info):
+                if handler.check_boundedness(effective_field_info, self):
                     # Field is bounded: return actual dimensions
-                    return handler.n_dimensions(field_info, self)
+                    return handler.n_dimensions(effective_field_info, self)
                 # Field is unbounded
                 if not allow_constants:
-                    raise UnboundedFieldError(_field_name, field_info.annotation)
+                    raise UnboundedFieldError(_field_name, effective_field_info.annotation)
                 # allow_constants=True: check for default value
-                if field_info.is_required():
-                    raise MissingDefaultError(_field_name, field_info.annotation)
+                if effective_field_info.is_required():
+                    raise MissingDefaultError(_field_name, effective_field_info.annotation)
                 # Has default: constant field, 0 dimensions
                 return 0
 
-        msg = f"No handler found for field with annotation {field_info.annotation}"
+        msg = f"No handler found for field with annotation {effective_field_info.annotation}"
         raise ValueError(msg)
 
-    def model_dimensions(self, model: type[BaseModel], *, allow_constants: bool = False) -> int:
+    def model_dimensions(
+        self,
+        model: type[BaseModel],
+        *,
+        allow_constants: bool = False,
+        overrides: Mapping[str, FieldOverride] | None = None,
+    ) -> int:
         """Return the number of dimensions for a model.
 
         Args:
             model: The model class to check.
             allow_constants: If True, unbounded fields with defaults contribute 0 dimensions.
                            If False, raises UnboundedFieldError for unbounded fields.
+            overrides: Optional mapping of field names to overrides. Use dot notation
+                      for nested fields (e.g., "inner.value").
 
         Returns:
             Total number of unit values needed for sampling.
@@ -204,10 +228,41 @@ class FieldHandlerRegistry:
             MissingDefaultError: If any field is unbounded and has no default value.
 
         """
-        return sum(
-            self.field_dimensions(field_info, allow_constants=allow_constants, field_name=field_name)
-            for field_name, field_info in model.model_fields.items()
-        )
+        overrides = overrides or {}
+        total = 0
+        for field_name, field_info in model.model_fields.items():
+            # Get direct override for this field
+            override = overrides.get(field_name)
+
+            # Check if this is a nested BaseModel field with nested overrides
+            field_type = field_info.annotation
+            if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                nested_overrides = extract_nested_overrides(overrides, field_name)
+                if nested_overrides or override:
+                    # If there's an override with default, it's 0 dimensions
+                    if override is not None and override.has_default():
+                        total += 0
+                    else:
+                        # Recursively get dimensions for nested model
+                        total += self.model_dimensions(
+                            field_type,
+                            allow_constants=allow_constants,
+                            overrides=nested_overrides,
+                        )
+                else:
+                    total += self.field_dimensions(
+                        field_info,
+                        allow_constants=allow_constants,
+                        field_name=field_name,
+                    )
+            else:
+                total += self.field_dimensions(
+                    field_info,
+                    allow_constants=allow_constants,
+                    field_name=field_name,
+                    override=override,
+                )
+        return total
 
     def sample_field(
         self,
@@ -216,6 +271,7 @@ class FieldHandlerRegistry:
         *,
         allow_constants: bool = False,
         field_name: str | None = None,
+        override: FieldOverride | None = None,
     ) -> Any:
         """Sample a value from a field based on the provided unit values.
 
@@ -225,6 +281,7 @@ class FieldHandlerRegistry:
             allow_constants: If True, uses default value for unbounded fields.
                            If False, raises error for unbounded fields.
             field_name: Optional field name for error messages.
+            override: Optional override to apply to the field.
 
         Returns:
             Sampled value for bounded fields, or default value for constant fields.
@@ -237,23 +294,32 @@ class FieldHandlerRegistry:
         """
         _field_name = field_name or "<unknown>"
 
+        # If override has a default, return it directly
+        if override is not None and override.has_default():
+            return override.get_default()
+
+        # Apply override if provided
+        effective_field_info = field_info
+        if override is not None:
+            effective_field_info = merge_field_override(field_info, override)
+
         for handler in self.iter_handlers():
-            if handler.can_handle(field_info):
-                if handler.check_boundedness(field_info, self):
+            if handler.can_handle(effective_field_info):
+                if handler.check_boundedness(effective_field_info, self):
                     # Field is bounded: sample normally
-                    return handler.sample(unit_values, field_info, self)
+                    return handler.sample(unit_values, effective_field_info, self)
                 # Field is unbounded
                 if not allow_constants:
-                    raise UnboundedFieldError(_field_name, field_info.annotation)
+                    raise UnboundedFieldError(_field_name, effective_field_info.annotation)
                 # allow_constants=True: use default value
-                if field_info.is_required():
-                    raise MissingDefaultError(_field_name, field_info.annotation)
+                if effective_field_info.is_required():
+                    raise MissingDefaultError(_field_name, effective_field_info.annotation)
                 # Return default value (or call default_factory)
-                if field_info.default_factory is not None:
-                    return field_info.default_factory()  # ty: ignore[missing-argument]
-                return field_info.default
+                if effective_field_info.default_factory is not None:
+                    return effective_field_info.default_factory()  # ty: ignore[missing-argument]
+                return effective_field_info.default
 
-        msg = f"No handler found for field with annotation {field_info.annotation}"
+        msg = f"No handler found for field with annotation {effective_field_info.annotation}"
         raise ValueError(msg)
 
     def sample_model(
@@ -262,6 +328,7 @@ class FieldHandlerRegistry:
         model: type[BaseModel],
         *,
         allow_constants: bool = False,
+        overrides: Mapping[str, FieldOverride] | None = None,
     ) -> BaseModel:
         """Sample a model instance based on the provided unit values.
 
@@ -270,6 +337,8 @@ class FieldHandlerRegistry:
             model: The model class to instantiate.
             allow_constants: If True, uses default values for unbounded fields.
                            If False, raises error for any unbounded field.
+            overrides: Optional mapping of field names to overrides. Use dot notation
+                      for nested fields (e.g., "inner.value").
 
         Returns:
             Instantiated model with sampled/default values.
@@ -279,19 +348,55 @@ class FieldHandlerRegistry:
             MissingDefaultError: If any unbounded field lacks a default value.
 
         """
+        overrides = overrides or {}
         unit_values_iter = iter(unit_values)
         field_values: dict[str, Any] = {}
+
         for field_name, field_info in model.model_fields.items():
-            # Take the next unit values for the field (0 for constants)
-            dims = self.field_dimensions(field_info, allow_constants=allow_constants, field_name=field_name)
-            field_unit_values = take(dims, unit_values_iter)
-            # Sample the field value (or use default for constants)
-            field_values[field_name] = self.sample_field(
-                field_unit_values,
-                field_info,
-                allow_constants=allow_constants,
-                field_name=field_name,
-            )
+            # Get direct override for this field
+            override = overrides.get(field_name)
+
+            # Check if this is a nested BaseModel field
+            field_type = field_info.annotation
+            if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                nested_overrides = extract_nested_overrides(overrides, field_name)
+
+                # If there's an override with default, use it directly
+                if override is not None and override.has_default():
+                    field_values[field_name] = override.get_default()
+                else:
+                    # Get dimensions for nested model
+                    dims = self.model_dimensions(
+                        field_type,
+                        allow_constants=allow_constants,
+                        overrides=nested_overrides,
+                    )
+                    field_unit_values = take(dims, unit_values_iter)
+                    # Recursively sample nested model
+                    field_values[field_name] = self.sample_model(
+                        field_unit_values,
+                        field_type,
+                        allow_constants=allow_constants,
+                        overrides=nested_overrides,
+                    )
+            else:
+                # Take the next unit values for the field (0 for constants)
+                dims = self.field_dimensions(
+                    field_info,
+                    allow_constants=allow_constants,
+                    field_name=field_name,
+                    override=override,
+                )
+                field_unit_values = take(dims, unit_values_iter)
+                # Sample the field value (or use default for constants)
+                field_values[field_name] = self.sample_field(
+                    field_unit_values,
+                    field_info,
+                    allow_constants=allow_constants,
+                    field_name=field_name,
+                    override=override,
+                )
+
         return model(**field_values)
 
     @classmethod
@@ -321,31 +426,52 @@ def is_model_bounded(model_class: type[BaseModel]) -> bool:
     return default_registry.check_model_boundedness(model_class)
 
 
-def field_dimensions(field_info: FieldInfo, *, allow_constants: bool = False) -> int:
+def field_dimensions(
+    field_info: FieldInfo,
+    *,
+    allow_constants: bool = False,
+    override: FieldOverride | None = None,
+) -> int:
     """Return the number of dimensions for a field.
 
     Args:
         field_info: The field to check.
         allow_constants: If True, returns 0 for unbounded fields with defaults.
                        If False, raises UnboundedFieldError for unbounded fields.
+        override: Optional override to apply to the field.
 
     Returns:
         Number of unit values needed. 0 means the field is a constant.
 
     """
-    return default_registry.field_dimensions(field_info, allow_constants=allow_constants)
+    return default_registry.field_dimensions(
+        field_info,
+        allow_constants=allow_constants,
+        override=override,
+    )
 
 
-def model_dimensions(model_class: type[BaseModel], *, allow_constants: bool = False) -> int:
+def model_dimensions(
+    model_class: type[BaseModel],
+    *,
+    allow_constants: bool = False,
+    overrides: Mapping[str, FieldOverride] | None = None,
+) -> int:
     """Return the total number of dimensions for a model.
 
     Args:
         model_class: The model class to check.
         allow_constants: If True, unbounded fields with defaults contribute 0 dimensions.
                        If False, raises UnboundedFieldError for unbounded fields.
+        overrides: Optional mapping of field names to overrides. Use dot notation
+                  for nested fields (e.g., "inner.value").
 
     Returns:
         Total number of unit values needed for sampling.
 
     """
-    return default_registry.model_dimensions(model_class, allow_constants=allow_constants)
+    return default_registry.model_dimensions(
+        model_class,
+        allow_constants=allow_constants,
+        overrides=overrides,
+    )

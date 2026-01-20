@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 __all__ = [
+    "UNSET",
     "BaseModelFieldHandler",
     "BoundedModel",
     "EnumFieldHandler",
     "FieldHandler",
     "FieldHandlerRegistry",
+    "FieldOverride",
     "LiteralFieldHandler",
     "MissingDefaultError",
     "NumericFieldHandler",
@@ -32,6 +34,7 @@ from ._handlers import (
     StringFieldHandler,
 )
 from ._model import BoundedModel
+from ._overrides import UNSET, FieldOverride
 from ._registry import (
     FieldHandlerRegistry,
     MissingDefaultError,
