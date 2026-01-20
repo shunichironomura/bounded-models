@@ -16,6 +16,7 @@ nav = [
     { "Basic Usage" = "guide/basic-usage.md" },
     { "Field Handlers" = "guide/field-handlers.md" },
     { "Constant Fields" = "guide/constant-fields.md" },
+    { "Field Overrides" = "guide/field-overrides.md" }
   ] },
   { "API Reference" = "api-reference.md" },
 ]
