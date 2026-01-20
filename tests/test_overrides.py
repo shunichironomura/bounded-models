@@ -143,6 +143,7 @@ class TestOverrideWithDefault:
             allow_constants=True,
         )
 
+        assert isinstance(result, PartiallyBoundedConfig)
         assert result.x == 0.25  # From override
         assert result.y == 0.75  # Sampled
 
@@ -178,6 +179,8 @@ class TestOverrideWithDefaultFactory:
             allow_constants=True,
         )
 
+        assert isinstance(result1, PartiallyBoundedConfig)
+        assert isinstance(result2, PartiallyBoundedConfig)
         assert result1.x == 0.1  # From factory call 1
         assert result2.x == 0.2  # From factory call 2
 
@@ -238,6 +241,7 @@ class TestNestedModelOverrides:
             overrides=overrides,
             allow_constants=True,
         )
+        assert isinstance(result, OuterModel)
         assert result.inner.value == 42.0  # From default
         assert result.rate == 0.75
 
@@ -259,6 +263,7 @@ class TestDeeplyNestedOverrides:
             overrides=overrides,
         )
 
+        assert isinstance(result, DeeplyNestedModel)
         assert result.outer.inner.value == 50.0
         assert result.outer.rate == 0.5
         assert result.x == 0.5

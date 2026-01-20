@@ -118,7 +118,7 @@ def merge_field_override(field_info: FieldInfo, override: FieldOverride) -> Fiel
     # We build an Annotated type with the annotation and metadata
     if new_metadata:
         annotated_type = Annotated[(field_info.annotation, *new_metadata)]  # type: ignore[misc]
-        result = FieldInfo.from_annotation(annotated_type)
+        result = FieldInfo.from_annotation(annotated_type)  # ty: ignore[invalid-argument-type]
     else:
         result = FieldInfo(annotation=field_info.annotation)
 
