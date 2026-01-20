@@ -11,6 +11,7 @@ This guide will walk you through using bounded-models to work with bounded Pydan
 1. **[Basic Usage](basic-usage.md)** - Core concepts and getting started
 2. **[Field Handlers](field-handlers.md)** - Supported field types and custom handlers
 3. **[Constant Fields](constant-fields.md)** - Treating unbounded fields as constants
+4. **[Field Overrides](field-overrides.md)** - Override bounds and defaults at sampling time
 
 ## Core Concepts
 
