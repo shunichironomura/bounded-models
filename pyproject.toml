@@ -113,3 +113,6 @@ unfixable = [
   "ANN201",  # missing-return-type-undocumented-public-function
   "S101",  # use of assert
 ]
+
+[tool.uv]
+exclude-newer = "7 days"
