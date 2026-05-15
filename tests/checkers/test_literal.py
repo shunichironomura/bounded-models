@@ -18,9 +18,11 @@ def registry(handler: LiteralFieldHandler) -> FieldHandlerRegistry:
     return FieldHandlerRegistry(handlers=[handler])
 
 
+# Pydantic types `annotation` as `type[Any] | None` (pending PEP 747 `TypeForm`),
+# but accepts `Literal[...]` at runtime. See pydantic/fields.py line 53.
 _BOUNDED_FIELDS = [
-    FieldInfo(annotation=Literal[1, 2, 3]),
-    FieldInfo(annotation=Literal["a", "b"]),
+    FieldInfo(annotation=Literal[1, 2, 3]),  # ty: ignore[invalid-argument-type]
+    FieldInfo(annotation=Literal["a", "b"]),  # ty: ignore[invalid-argument-type]
 ]
 
 _UNBOUNDED_FIELDS: list[FieldInfo] = []
