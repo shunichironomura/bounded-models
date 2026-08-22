@@ -70,7 +70,7 @@ class FieldHandlerRegistry:
                 assert len(handler) == 2, "Handler must be a tuple of (priority, handler) or just a handler."
                 assert isinstance(handler[0], int), "Handler priority must be an integer."
                 assert isinstance(handler[1], FieldHandler), "Handler must be an instance of FieldHandler."
-                return handler  # ty: ignore[invalid-return-type] # Checked by the assert statements
+                return handler  # Checked by the assert statements
             assert isinstance(handler, FieldHandler), "Handler must be an instance of FieldHandler."
             return (0, handler)
 
