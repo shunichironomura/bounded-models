@@ -18,10 +18,12 @@ Use `FieldOverride` to specify bounds or defaults for fields:
 from pydantic import BaseModel
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class ExternalConfig(BaseModel):
     learning_rate: float  # No bounds
-    batch_size: int       # No bounds
-    name: str             # No bounds
+    batch_size: int  # No bounds
+    name: str  # No bounds
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -69,9 +71,11 @@ Override bounds to make unbounded fields samplable:
 from pydantic import BaseModel
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class ThirdPartyConfig(BaseModel):
     temperature: float
     max_tokens: int
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -96,10 +100,12 @@ Use `default` or `default_factory` to treat a field as a constant:
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class Config(BaseModel):
     x: float = Field(ge=0.0, le=1.0)
     y: float = Field(ge=0.0, le=1.0)
     z: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -135,6 +141,7 @@ overrides = {
 
 # Or generate unique values
 import uuid
+
 overrides = {
     "id": FieldOverride(default_factory=lambda: str(uuid.uuid4())),
 }
@@ -148,12 +155,15 @@ Use dot notation to override fields in nested models:
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class Inner(BaseModel):
     value: float  # No bounds
+
 
 class Outer(BaseModel):
     inner: Inner
     rate: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -177,16 +187,20 @@ Dot notation works for any nesting depth:
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class Level3(BaseModel):
     value: float
+
 
 class Level2(BaseModel):
     level3: Level3
     x: float = Field(ge=0.0, le=1.0)
 
+
 class Level1(BaseModel):
     level2: Level2
     y: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -227,8 +241,10 @@ The module-level convenience functions also support overrides:
 from bounded_models import model_dimensions, FieldOverride
 from pydantic import BaseModel
 
+
 class Config(BaseModel):
     value: float
+
 
 overrides = {"value": FieldOverride(ge=0.0, le=1.0)}
 
@@ -246,10 +262,12 @@ Overrides work together with `allow_constants`:
 from pydantic import BaseModel
 from bounded_models import FieldHandlerRegistry, FieldOverride
 
+
 class Config(BaseModel):
     a: float  # Unbounded, no default
     b: float = 1.0  # Unbounded, has default
     c: float  # Will be bounded via override
+
 
 registry = FieldHandlerRegistry.default()
 

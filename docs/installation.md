@@ -28,6 +28,7 @@ Check that bounded-models is installed correctly:
 
 ```python
 import bounded_models
+
 print(bounded_models.__version__)
 ```
 

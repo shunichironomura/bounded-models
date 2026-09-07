@@ -22,10 +22,12 @@ from typing import Annotated, Literal
 from bounded_models import FieldHandlerRegistry
 from pydantic import BaseModel, Field
 
+
 class Config(BaseModel):
     mode: Literal["fast", "slow", "medium"]
     threshold: Annotated[float, Field(ge=0.0, le=1.0)]
     count: Annotated[int, Field(ge=1, le=10)]
+
 
 registry = FieldHandlerRegistry.default()
 

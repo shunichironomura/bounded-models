@@ -15,6 +15,7 @@ Handles `int` and `float` fields with `ge`/`le` or `gt`/`lt` constraints.
 ```python
 from pydantic import BaseModel, Field
 
+
 class NumericExample(BaseModel):
     # Both bounds required for boundedness
     temperature: float = Field(ge=-40.0, le=50.0)
@@ -33,6 +34,7 @@ Handles `Literal` types with a finite set of values.
 from typing import Literal
 from pydantic import BaseModel
 
+
 class LiteralExample(BaseModel):
     mode: Literal["train", "eval", "test"]
     priority: Literal[1, 2, 3, 4, 5]
@@ -48,10 +50,12 @@ Handles Python `Enum` types.
 from enum import Enum
 from pydantic import BaseModel
 
+
 class Color(Enum):
     RED = "red"
     GREEN = "green"
     BLUE = "blue"
+
 
 class EnumExample(BaseModel):
     color: Color
@@ -64,8 +68,10 @@ Handles nested `BaseModel` subclasses recursively.
 ```python
 from pydantic import BaseModel, Field
 
+
 class Inner(BaseModel):
     x: float = Field(ge=0.0, le=1.0)
+
 
 class Outer(BaseModel):
     inner: Inner

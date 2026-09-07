@@ -28,10 +28,12 @@ from typing import Literal
 from bounded_models import FieldHandlerRegistry
 from pydantic import BaseModel, Field
 
+
 class Config(BaseModel):
     mode: Literal["fast", "slow"]
     threshold: float = Field(ge=0.0, le=1.0)
     count: int = Field(ge=1, le=10)
+
 
 registry = FieldHandlerRegistry.default()
 
