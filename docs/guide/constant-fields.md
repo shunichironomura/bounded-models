@@ -19,9 +19,11 @@ By default, all fields must be bounded. With `allow_constants=True`, unbounded f
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry
 
+
 class Config(BaseModel):
     name: str = "experiment_1"  # Constant (unbounded with default)
     learning_rate: float = Field(ge=1e-5, le=1e-1)  # Sampled
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -44,9 +46,11 @@ Fields with `default_factory` also work as constants:
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry
 
+
 class Config(BaseModel):
     tags: list[str] = Field(default_factory=list)
     rate: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 instance = registry.sample_model([0.5], Config, allow_constants=True)
@@ -61,9 +65,11 @@ Use `__allow_constants__` class attribute:
 from bounded_models import BoundedModel
 from pydantic import Field
 
+
 class StrictModel(BoundedModel):
     # Default: all fields must be bounded
     x: float = Field(ge=0.0, le=1.0)
+
 
 class LenientModel(BoundedModel):
     __allow_constants__ = True
@@ -82,8 +88,10 @@ Raised when `allow_constants=False` and a field is unbounded:
 from bounded_models import FieldHandlerRegistry, UnboundedFieldError
 from pydantic import BaseModel
 
+
 class BadModel(BaseModel):
     name: str = "test"  # Unbounded
+
 
 registry = FieldHandlerRegistry.default()
 try:
@@ -100,9 +108,11 @@ Raised when an unbounded field has no default value:
 from bounded_models import FieldHandlerRegistry, MissingDefaultError
 from pydantic import BaseModel, Field
 
+
 class BadModel(BaseModel):
     name: str  # Unbounded AND no default!
     rate: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 try:

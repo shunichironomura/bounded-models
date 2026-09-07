@@ -16,6 +16,7 @@ The simplest way to ensure your model is bounded is to inherit from `BoundedMode
 from bounded_models import BoundedModel
 from pydantic import Field
 
+
 class SearchParams(BoundedModel):
     learning_rate: float = Field(ge=1e-5, le=1e-1)
     batch_size: int = Field(ge=1, le=128)
@@ -31,9 +32,11 @@ You can also use regular Pydantic `BaseModel` and check boundedness manually:
 from pydantic import BaseModel, Field
 from bounded_models import FieldHandlerRegistry
 
+
 class Config(BaseModel):
     threshold: float = Field(ge=0.0, le=1.0)
     max_iterations: int = Field(ge=1, le=1000)
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -50,10 +53,12 @@ from typing import Literal
 from bounded_models import FieldHandlerRegistry
 from pydantic import BaseModel, Field
 
+
 class ExperimentConfig(BaseModel):
     algorithm: Literal["sgd", "adam", "rmsprop"]  # 1 dimension
     learning_rate: float = Field(ge=1e-5, le=1e-1)  # 1 dimension
     momentum: float = Field(ge=0.0, le=0.99)  # 1 dimension
+
 
 registry = FieldHandlerRegistry.default()
 dims = registry.model_dimensions(ExperimentConfig)  # 3
@@ -67,9 +72,11 @@ Sample instances by providing values in the unit hypercube `[0, 1]^n`:
 from bounded_models import FieldHandlerRegistry
 from pydantic import BaseModel, Field
 
+
 class Params(BaseModel):
     x: float = Field(ge=0.0, le=10.0)
     y: float = Field(ge=-5.0, le=5.0)
+
 
 registry = FieldHandlerRegistry.default()
 
@@ -92,13 +99,16 @@ Bounded models can be nested:
 from bounded_models import BoundedModel
 from pydantic import Field
 
+
 class Position(BoundedModel):
     x: float = Field(ge=0.0, le=100.0)
     y: float = Field(ge=0.0, le=100.0)
 
+
 class Agent(BoundedModel):
     position: Position  # 2 dimensions from nested model
     speed: float = Field(ge=0.0, le=10.0)  # 1 dimension
+
 
 registry = FieldHandlerRegistry.default()
 dims = registry.model_dimensions(Agent)  # 3
@@ -114,10 +124,12 @@ from scipy.stats import qmc
 from bounded_models import FieldHandlerRegistry
 from pydantic import BaseModel, Field
 
+
 class SearchSpace(BaseModel):
     param_a: float = Field(ge=0.0, le=1.0)
     param_b: float = Field(ge=0.0, le=1.0)
     param_c: float = Field(ge=0.0, le=1.0)
+
 
 registry = FieldHandlerRegistry.default()
 dims = registry.model_dimensions(SearchSpace)
