@@ -44,9 +44,11 @@ This approach integrates well with quasi-random sequences (Sobol, Halton) for sp
 from bounded_models import FieldHandlerRegistry, BoundedModel
 from pydantic import Field
 
+
 class MyModel(BoundedModel):
     x: float = Field(ge=0.0, le=1.0)
     y: float = Field(ge=-10.0, le=10.0)
+
 
 registry = FieldHandlerRegistry.default()
 

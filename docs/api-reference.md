@@ -86,6 +86,7 @@ class BoundedModel(BaseModel):
 from bounded_models import BoundedModel
 from pydantic import Field
 
+
 class MyModel(BoundedModel):
     x: float = Field(ge=0.0, le=1.0)
     y: int = Field(ge=0, le=10)
@@ -102,7 +103,9 @@ class NumericFieldHandler(FieldHandler):
     def supports(self, field_info: FieldInfo) -> bool: ...
     def is_bounded(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> bool: ...
     def n_dimensions(self, field_info: FieldInfo, registry: FieldHandlerRegistry) -> int: ...
-    def sample(self, unit_values: Sequence[float], field_info: FieldInfo, registry: FieldHandlerRegistry) -> int | float: ...
+    def sample(
+        self, unit_values: Sequence[float], field_info: FieldInfo, registry: FieldHandlerRegistry
+    ) -> int | float: ...
 ```
 
 ### LiteralFieldHandler
@@ -160,6 +163,7 @@ def field_dimensions(
     allow_constants: bool = False,
 ) -> int:
     """Get field dimensions using the default registry."""
+
 
 def model_dimensions(
     model: type[BaseModel],
