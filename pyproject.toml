@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
   "more-itertools>=10.7.0",
   "pydantic>=2.11.7",
+  "typing-extensions>=4.13.0",
 ]
 
 [project.urls]
