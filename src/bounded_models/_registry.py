@@ -25,12 +25,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from pydantic.fields import FieldInfo
+    from typing_extensions import TypeForm
 
 
 class UnboundedFieldError(ValueError):
     """Raised when allow_constants=False and field is unbounded."""
 
-    def __init__(self, field_name: str, annotation: type | None = None) -> None:
+    def __init__(self, field_name: str, annotation: TypeForm[Any] | None = None) -> None:
         self.field_name = field_name
         self.annotation = annotation
         msg = f"Field '{field_name}' is unbounded"
@@ -43,7 +44,7 @@ class UnboundedFieldError(ValueError):
 class MissingDefaultError(ValueError):
     """Raised when unbounded field has no default value (or default_factory)."""
 
-    def __init__(self, field_name: str, annotation: type | None = None) -> None:
+    def __init__(self, field_name: str, annotation: TypeForm[Any] | None = None) -> None:
         self.field_name = field_name
         self.annotation = annotation
         msg = f"Field '{field_name}' is unbounded and has no default value"
